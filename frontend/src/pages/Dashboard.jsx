@@ -1,154 +1,109 @@
-import React from 'react';
-import { DollarSign, Wallet, Sparkles, Repeat, ArrowUpRight, TrendingUp } from 'lucide-react';
-import StatCard from '../components/ui/StatCard';
-import ExpenseList from '../components/expenses/ExpenseList';
-import AiInsightsCard from '../components/ai/AiInsightsCard';
+import React, { useState } from 'react';
+import { Plus, RefreshCw, Wifi, WifiOff } from 'lucide-react';
+import { useDashboard } from '../hooks/useDashboard';
+import SummaryCards     from '../components/dashboard/SummaryCards';
+import SpendingBreakdown from '../components/dashboard/SpendingBreakdown';
+import TrendChart        from '../components/dashboard/TrendChart';
+import RecentTransactions from '../components/dashboard/RecentTransactions';
+import AddTransactionModal from '../components/dashboard/AddTransactionModal';
 
-export default function Dashboard({ 
-  expenses, 
-  onDeleteExpense, 
-  isLoading, 
-  onOpenAddExpense, 
-  onOpenScanner 
-}) {
-  const totalSpent = expenses.reduce((sum, e) => sum + (parseFloat(e.amount) || 0), 0);
-  const monthlyBudget = 2500.00;
-  const budgetRemaining = Math.max(0, monthlyBudget - totalSpent);
-  const recurringTotal = expenses
-    .filter(e => e.is_recurring)
-    .reduce((sum, e) => sum + (parseFloat(e.amount) || 0), 0);
+export default function Dashboard() {
+  const {
+    transactions,
+    summary,
+    isLoading,
+    isBackendOnline,
+    addTransaction,
+    deleteTransaction,
+    refresh,
+  } = useDashboard();
 
-  // Group by category for visual distribution
-  const categoryTotals = expenses.reduce((acc, curr) => {
-    acc[curr.category] = (acc[curr.category] || 0) + parseFloat(curr.amount || 0);
-    return acc;
-  }, {});
+  const [modalOpen, setModalOpen] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
-  const categoriesSorted = Object.entries(categoryTotals)
-    .sort((a, b) => b[1] - a[1]);
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await refresh();
+    setRefreshing(false);
+  };
+
+  const handleAdded = () => refresh();
 
   return (
     <div className="space-y-6">
-      {/* Welcome Banner */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-6 rounded-2xl bg-gradient-to-r from-slate-900 via-slate-900/90 to-emerald-950/40 border border-slate-800">
+      {/* ── Page header ─────────────────────────────── */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-extrabold text-white tracking-tight">Financial Overview</h1>
-            <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-              Live Tracker
+            <h1 className="text-2xl font-extrabold tracking-tight text-white">
+              Financial Dashboard
+            </h1>
+            {/* Backend status pill */}
+            <span className={`flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[10px] font-semibold ring-1 ${
+              isBackendOnline
+                ? 'bg-emerald-500/10 text-emerald-400 ring-emerald-500/25'
+                : 'bg-amber-500/10  text-amber-400  ring-amber-500/25'
+            }`}>
+              {isBackendOnline ? <Wifi className="h-2.5 w-2.5" /> : <WifiOff className="h-2.5 w-2.5" />}
+              {isBackendOnline ? 'API Connected' : 'Demo Mode'}
             </span>
           </div>
-          <p className="text-sm text-slate-400 mt-1">
-            Real-time expense monitoring powered by FastAPI and Groq AI Intelligence.
+          <p className="mt-0.5 text-sm text-slate-400">
+            {isBackendOnline
+              ? 'Live data from your FastAPI backend · /api/transactions'
+              : 'Backend offline — showing demo data'}
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
+          {/* Refresh */}
           <button
-            onClick={onOpenScanner}
-            className="flex items-center gap-2 px-4 py-2 bg-violet-600/20 hover:bg-violet-600/30 text-violet-300 border border-violet-500/30 rounded-xl text-xs font-semibold transition-all active:scale-95"
+            onClick={handleRefresh}
+            disabled={refreshing || isLoading}
+            title="Refresh data"
+            className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-800 bg-slate-900 text-slate-400 hover:text-white transition-colors disabled:opacity-40"
           >
-            <Sparkles className="w-4 h-4 text-violet-400" />
-            <span>AI Receipt Scan</span>
+            <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
           </button>
+
+          {/* Add transaction */}
           <button
-            onClick={onOpenAddExpense}
-            className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold shadow-lg shadow-emerald-500/20 transition-all active:scale-95"
+            onClick={() => setModalOpen(true)}
+            className="flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-emerald-500/20 hover:bg-emerald-500 active:scale-95 transition-all"
           >
-            <DollarSign className="w-4 h-4" />
-            <span>New Expense</span>
+            <Plus className="h-4 w-4" />
+            Add Transaction
           </button>
         </div>
       </div>
 
-      {/* Metrics Row */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard
-          title="Total Spending"
-          amount={`$${totalSpent.toFixed(2)}`}
-          change="+8.4% vs last mo"
-          changeType="negative"
-          icon={DollarSign}
-          color="emerald"
-        />
-        <StatCard
-          title="Budget Remaining"
-          amount={`$${budgetRemaining.toFixed(2)}`}
-          change={`${Math.round((budgetRemaining / monthlyBudget) * 100)}% left`}
-          changeType="positive"
-          icon={Wallet}
-          color="cyan"
-        />
-        <StatCard
-          title="AI Savings Target"
-          amount="$145.00"
-          change="Groq recommendation"
-          changeType="positive"
-          icon={Sparkles}
-          color="violet"
-        />
-        <StatCard
-          title="Active Subscriptions"
-          amount={`$${recurringTotal.toFixed(2)}/mo`}
-          change={`${expenses.filter(e => e.is_recurring).length} services`}
-          changeType="positive"
-          icon={Repeat}
-          color="amber"
-        />
-      </div>
+      {/* ── Summary cards ───────────────────────────── */}
+      <SummaryCards summary={summary} isLoading={isLoading} />
 
-      {/* Main Grid: Transactions & Category Distribution */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left Column: Recent Transactions */}
-        <div className="lg:col-span-2 bg-slate-900/70 border border-slate-800 rounded-2xl p-6 shadow-xl backdrop-blur-md">
-          <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-800">
-            <div>
-              <h3 className="text-base font-bold text-white">Recent Transactions</h3>
-              <p className="text-xs text-slate-400">Synced directly with FastAPI backend</p>
-            </div>
-            <span className="text-xs font-medium text-slate-400">
-              {expenses.length} records
-            </span>
-          </div>
-
-          <ExpenseList
-            expenses={expenses}
-            onDelete={onDeleteExpense}
-            isLoading={isLoading}
-          />
+      {/* ── Charts row ──────────────────────────────── */}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        {/* Trend chart — spans 2 cols */}
+        <div className="lg:col-span-2">
+          <TrendChart transactions={transactions} isLoading={isLoading} />
         </div>
 
-        {/* Right Column: AI Insights & Category Breakdown */}
-        <div className="space-y-6">
-          <AiInsightsCard expenses={expenses} />
-
-          {/* Category Breakdown Widget */}
-          <div className="bg-slate-900/70 border border-slate-800 rounded-2xl p-6 shadow-xl backdrop-blur-md">
-            <h3 className="text-base font-bold text-white mb-1">Category Breakdown</h3>
-            <p className="text-xs text-slate-400 mb-4">Highest expenditure areas</p>
-
-            <div className="space-y-3.5">
-              {categoriesSorted.slice(0, 5).map(([category, amt]) => {
-                const pct = totalSpent > 0 ? Math.round((amt / totalSpent) * 100) : 0;
-                return (
-                  <div key={category} className="space-y-1.5">
-                    <div className="flex justify-between text-xs">
-                      <span className="font-medium text-slate-300">{category}</span>
-                      <span className="font-semibold text-slate-100">${amt.toFixed(2)} ({pct}%)</span>
-                    </div>
-                    <div className="w-full bg-slate-800 rounded-full h-2 overflow-hidden">
-                      <div
-                        className="bg-gradient-to-r from-emerald-500 to-teal-400 h-2 rounded-full transition-all duration-500"
-                        style={{ width: `${pct}%` }}
-                      ></div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </div>
+        {/* Donut + breakdown — 1 col */}
+        <SpendingBreakdown summary={summary} isLoading={isLoading} />
       </div>
+
+      {/* ── Transactions table ──────────────────────── */}
+      <RecentTransactions
+        transactions={transactions}
+        isLoading={isLoading}
+        onDelete={deleteTransaction}
+      />
+
+      {/* ── Modal ───────────────────────────────────── */}
+      <AddTransactionModal
+        isOpen={modalOpen}
+        onClose={() => setModalOpen(false)}
+        onAdded={handleAdded}
+      />
     </div>
   );
 }

@@ -64,9 +64,11 @@ async def health_check():
 # API Router Registration
 # ------------------------------------------------------------------------------
 from routers.transactions import router as transactions_router
+from routers.chat import router as chat_router
 
-# Direct /api router (GET /api/transactions, POST /api/transactions/manual, ai-text, ai-receipt, GET /api/summary)
-app.include_router(transactions_router)
+# Direct /api routes
+app.include_router(transactions_router)   # /api/transactions, /api/summary, etc.
+app.include_router(chat_router)           # /api/chat
 
 # API v1 Versioned endpoints
 app.include_router(api_router, prefix=settings.API_V1_STR)
