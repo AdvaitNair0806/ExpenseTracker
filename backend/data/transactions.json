@@ -1,0 +1,56 @@
+[
+  {
+    "id": "tx_e1a2b3c4",
+    "amount": 78.45,
+    "category": "Food & Dining",
+    "vendor": "Whole Foods Market",
+    "date": "2026-10-18",
+    "notes": "Weekly groceries and organic produce",
+    "type": "expense"
+  },
+  {
+    "id": "tx_f5d6e7a8",
+    "amount": 3200.0,
+    "category": "Salary",
+    "vendor": "Acme Corp Tech",
+    "date": "2026-10-15",
+    "notes": "Bi-weekly paycheck direct deposit",
+    "type": "income"
+  },
+  {
+    "id": "tx_c9b8a7d6",
+    "amount": 24.0,
+    "category": "Housing & Utilities",
+    "vendor": "DigitalOcean",
+    "date": "2026-10-14",
+    "notes": "Cloud server hosting",
+    "type": "expense"
+  },
+  {
+    "id": "tx_d1c2b3a4",
+    "amount": 34.2,
+    "category": "Transportation",
+    "vendor": "Uber",
+    "date": "2026-10-12",
+    "notes": "Ride to airport terminal",
+    "type": "expense"
+  },
+  {
+    "id": "tx_b2a3c4d5",
+    "amount": 450.0,
+    "category": "Freelance",
+    "vendor": "Client Design Project",
+    "date": "2026-10-10",
+    "notes": "Frontend consulting milestone payment",
+    "type": "income"
+  },
+  {
+    "id": "tx_a1b2c3d4",
+    "amount": 19.99,
+    "category": "Entertainment",
+    "vendor": "Netflix",
+    "date": "2026-10-09",
+    "notes": "Monthly streaming subscription",
+    "type": "expense"
+  }
+]
