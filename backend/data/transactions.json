@@ -10,7 +10,7 @@
   },
   {
     "id": "tx_f5d6e7a8",
-    "amount": 3200.0,
+    "amount": 3200.00,
     "category": "Salary",
     "vendor": "Acme Corp Tech",
     "date": "2026-10-15",
@@ -19,7 +19,7 @@
   },
   {
     "id": "tx_c9b8a7d6",
-    "amount": 24.0,
+    "amount": 24.00,
     "category": "Housing & Utilities",
     "vendor": "DigitalOcean",
     "date": "2026-10-14",
@@ -28,7 +28,7 @@
   },
   {
     "id": "tx_d1c2b3a4",
-    "amount": 34.2,
+    "amount": 34.20,
     "category": "Transportation",
     "vendor": "Uber",
     "date": "2026-10-12",
@@ -37,7 +37,7 @@
   },
   {
     "id": "tx_b2a3c4d5",
-    "amount": 450.0,
+    "amount": 450.00,
     "category": "Freelance",
     "vendor": "Client Design Project",
     "date": "2026-10-10",
