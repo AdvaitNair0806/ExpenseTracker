@@ -15,8 +15,10 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-# Preload environment variables from .env
-load_dotenv()
+# Preload environment variables from backend .env
+_backend_dir = Path(__file__).resolve().parent.parent.parent
+load_dotenv(_backend_dir / ".env", override=True)
+load_dotenv(override=True)
 
 logger = logging.getLogger(__name__)
 
@@ -36,8 +38,8 @@ class AIServiceError(Exception):
 class AIService:
     def __init__(self, api_key: Optional[str] = None):
         self.api_key = api_key or os.getenv("GROQ_API_KEY", "")
-        self.text_model = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
-        self.vision_model = os.getenv("GROQ_VISION_MODEL", "llama-3.2-11b-vision-preview")
+        self.text_model = os.getenv("GROQ_MODEL", "qwen/qwen3.8-27b")
+        self.vision_model = os.getenv("GROQ_VISION_MODEL", "qwen/qwen3.8-27b")
         self.client = None
         self._init_client()
 
@@ -227,7 +229,7 @@ Reference date (if year is omitted on receipt): {today_str}
 
 Required Output Schema (JSON only):
 {{
-  "total_amount": <float, final total billed. Strip currency signs and return float>,
+  "total_amount": <float, final total billed. Strip currency signs like ₹, Rs, $ and return float>,
   "vendor": <string, name of the merchant, restaurant, or business>,
   "date": <string, date of purchase formatted as YYYY-MM-DD or best readable date>,
   "category": <string, one of: Food & Dining, Groceries, Shopping, Transportation, Housing & Utilities, Entertainment, Healthcare, Miscellaneous>,
@@ -330,8 +332,8 @@ Required Output Schema (JSON only):
         note_lower = note.lower()
 
         # Extract number if present
-        amount_match = re.search(r"(\$|₹|€)?\s*([0-9]+(?:\.[0-9]{1,2})?)", note)
-        amount = float(amount_match.group(2)) if amount_match else 25.00
+        amount_match = re.search(r"(?:₹|rs\.?|inr|\$|€)?\s*([0-9]+(?:\.[0-9]{1,2})?)", note, re.IGNORECASE)
+        amount = float(amount_match.group(1)) if amount_match else 250.00
 
         # Detect income vs expense
         is_income = any(w in note_lower for w in ["salary", "deposit", "earned", "received", "refund", "freelance"])

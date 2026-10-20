@@ -49,3 +49,10 @@ npm run dev
 Configure your keys in `backend/.env`:
 - `GROQ_API_KEY`: Groq Cloud API key for ultra-fast Llama 3 categorization & receipt parsing.
 - `DATABASE_TYPE`: Switch between `mongodb` or `postgresql`.
+
+---
+
+## 📄 License
+
+This project is licensed under the [MIT License](LICENSE) © 2026 Advait Nair.
+

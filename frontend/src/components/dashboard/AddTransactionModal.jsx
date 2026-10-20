@@ -102,7 +102,7 @@ function PreviewForm({ fields, onChange, accent = 'emerald', source = 'AI' }) {
       <TypeToggle value={fields.type} onChange={v => onChange('type', v)} />
 
       <div className="grid grid-cols-2 gap-3">
-        <Field label="Amount ($)" required>
+        <Field label="Amount (₹)" required>
           <input
             type="number" step="0.01" min="0.01" required
             value={fields.amount}
@@ -582,7 +582,7 @@ function ManualTab({ onSave, onClose }) {
       <TypeToggle value={type} onChange={setType} />
 
       <div className="grid grid-cols-2 gap-3">
-        <Field label="Amount ($)" required>
+        <Field label="Amount (₹)" required>
           <input
             type="number" step="0.01" min="0.01" placeholder="0.00"
             value={amount} onChange={e => setAmount(e.target.value)} required

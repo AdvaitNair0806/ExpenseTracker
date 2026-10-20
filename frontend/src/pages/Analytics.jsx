@@ -8,7 +8,7 @@ export default function Analytics() {
   const { transactions, summary, isLoading } = useDashboard();
 
   const total = summary?.total_expenses ?? 0;
-  const budget = 2500;
+  const budget = 50000;
   const pct = Math.min(100, Math.round((total / budget) * 100));
 
   return (
@@ -33,14 +33,16 @@ export default function Analytics() {
           </span>
           <div>
             <h3 className="text-sm font-bold text-white">Monthly Budget Tracker</h3>
-            <p className="text-[11px] text-slate-400">${budget.toLocaleString()} monthly limit</p>
+            <p className="text-[11px] text-slate-400">₹{budget.toLocaleString('en-IN')} monthly limit</p>
           </div>
         </div>
 
         <div className="space-y-2">
           <div className="flex justify-between text-xs mb-1">
             <span className="text-slate-400">Spent</span>
-            <span className="font-semibold text-slate-100">${total.toFixed(2)} / ${budget.toLocaleString()}</span>
+            <span className="font-semibold text-slate-100">
+              ₹{total.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} / ₹{budget.toLocaleString('en-IN')}
+            </span>
           </div>
           <div className="h-3 w-full overflow-hidden rounded-full bg-slate-800">
             <div
@@ -54,11 +56,11 @@ export default function Analytics() {
         <div className="mt-4 grid grid-cols-2 gap-3">
           <div className="rounded-xl bg-slate-950 border border-slate-800 p-3 text-center">
             <p className="text-[10px] text-slate-500 uppercase tracking-wider">Daily Avg</p>
-            <p className="text-sm font-bold text-white mt-1">${(total / 30).toFixed(2)}/day</p>
+            <p className="text-sm font-bold text-white mt-1">₹{(total / 30).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/day</p>
           </div>
           <div className="rounded-xl bg-slate-950 border border-slate-800 p-3 text-center">
             <p className="text-[10px] text-slate-500 uppercase tracking-wider">Projected Month-End</p>
-            <p className="text-sm font-bold text-white mt-1">${(total * 1.15).toFixed(2)}</p>
+            <p className="text-sm font-bold text-white mt-1">₹{(total * 1.15).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
           </div>
         </div>
       </div>

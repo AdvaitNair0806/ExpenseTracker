@@ -6,24 +6,24 @@ import { useState, useEffect, useCallback } from 'react';
 import { transactionApi } from '../services/api';
 
 const FALLBACK_TRANSACTIONS = [
-  { id: 'demo_1', amount: 78.45, category: 'Food & Dining', vendor: 'Whole Foods Market', date: '2026-10-18', notes: 'Weekly groceries', type: 'expense' },
-  { id: 'demo_2', amount: 3200,  category: 'Salary',         vendor: 'Acme Corp',          date: '2026-10-15', notes: 'Bi-weekly pay',   type: 'income'  },
-  { id: 'demo_3', amount: 34.20, category: 'Transportation', vendor: 'Uber',                date: '2026-10-12', notes: 'Airport ride',    type: 'expense' },
-  { id: 'demo_4', amount: 450,   category: 'Freelance',      vendor: 'Client Project',      date: '2026-10-10', notes: 'Consulting fee', type: 'income'  },
-  { id: 'demo_5', amount: 24.00, category: 'Utilities',      vendor: 'DigitalOcean',        date: '2026-10-09', notes: 'VPS hosting',    type: 'expense' },
-  { id: 'demo_6', amount: 19.99, category: 'Entertainment',  vendor: 'Netflix',             date: '2026-10-08', notes: 'Subscription',   type: 'expense' },
+  { id: 'demo_1', amount: 75000, category: 'Salary',         vendor: 'Acme Tech India',    date: '2026-10-15', notes: 'Monthly salary',      type: 'income'  },
+  { id: 'demo_2', amount: 15000, category: 'Freelance',      vendor: 'Design Client',      date: '2026-10-10', notes: 'Consulting milestone',type: 'income'  },
+  { id: 'demo_3', amount: 2850,  category: 'Groceries',      vendor: 'Blinkit / Nature',   date: '2026-10-18', notes: 'Weekly groceries',    type: 'expense' },
+  { id: 'demo_4', amount: 650,   category: 'Food & Dining',  vendor: "Haldiram's",         date: '2026-10-20', notes: 'Dinner with friends', type: 'expense' },
+  { id: 'demo_5', amount: 1200,  category: 'Utilities',      vendor: 'Jio Fiber',          date: '2026-10-14', notes: 'Broadband internet',  type: 'expense' },
+  { id: 'demo_6', amount: 649,   category: 'Entertainment',  vendor: 'Netflix India',      date: '2026-10-09', notes: 'Monthly premium',     type: 'expense' },
 ];
 
 const FALLBACK_SUMMARY = {
-  total_balance: 3522.36,
-  total_income:  3650.00,
-  total_expenses: 127.64,
-  category_breakdown: { 'Food & Dining': 78.45, Transportation: 34.20, Utilities: 24.00, Entertainment: 19.99 },
+  total_balance: 84651.00,
+  total_income:  90000.00,
+  total_expenses: 5349.00,
+  category_breakdown: { 'Groceries': 2850, 'Utilities': 1200, 'Food & Dining': 650, 'Entertainment': 649 },
   category_details: [
-    { category: 'Food & Dining', amount: 78.45, percentage: 61.47, count: 1 },
-    { category: 'Transportation', amount: 34.20, percentage: 26.80, count: 1 },
-    { category: 'Utilities', amount: 24.00, percentage: 18.80, count: 1 },
-    { category: 'Entertainment', amount: 19.99, percentage: 15.66, count: 1 },
+    { category: 'Groceries', amount: 2850, percentage: 53.28, count: 1 },
+    { category: 'Utilities', amount: 1200, percentage: 22.43, count: 1 },
+    { category: 'Food & Dining', amount: 650, percentage: 12.15, count: 1 },
+    { category: 'Entertainment', amount: 649, percentage: 12.13, count: 1 },
   ],
   transaction_count: 6,
   income_count: 2,

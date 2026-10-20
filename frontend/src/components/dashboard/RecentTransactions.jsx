@@ -27,7 +27,7 @@ function getCategoryMeta(category) {
 }
 
 function fmtCurrency(n) {
-  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(n ?? 0);
+  return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(n ?? 0);
 }
 
 function fmtDate(str) {

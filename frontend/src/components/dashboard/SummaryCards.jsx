@@ -50,10 +50,11 @@ function SummaryCard({ type, value, subLabel, isLoading }) {
 
   if (isLoading) return <Skeleton />;
 
-  const formatted = new Intl.NumberFormat('en-US', {
+  const formatted = new Intl.NumberFormat('en-IN', {
     style: 'currency',
-    currency: 'USD',
+    currency: 'INR',
     minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
   }).format(value ?? 0);
 
   return (

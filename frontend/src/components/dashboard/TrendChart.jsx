@@ -37,7 +37,7 @@ const CustomTooltip = ({ active, payload, label }) => {
       <p className="mb-1.5 font-semibold text-slate-300">{label}</p>
       {payload.map(p => (
         <p key={p.name} style={{ color: p.color }} className="font-medium tabular-nums">
-          {p.name === 'income' ? '↑ Income' : '↓ Expenses'}: ${p.value.toFixed(2)}
+          {p.name === 'income' ? '↑ Income' : '↓ Expenses'}: ₹{p.value.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
         </p>
       ))}
     </div>
@@ -107,7 +107,7 @@ export default function TrendChart({ transactions = [], isLoading }) {
               tick={{ fill: '#64748b', fontSize: 10 }}
               axisLine={false}
               tickLine={false}
-              tickFormatter={v => `$${v}`}
+              tickFormatter={v => v >= 1000 ? `₹${(v/1000).toFixed(0)}k` : `₹${v}`}
             />
             <Tooltip content={<CustomTooltip />} />
             <Area

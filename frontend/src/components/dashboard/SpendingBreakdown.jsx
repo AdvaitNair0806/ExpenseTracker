@@ -34,7 +34,7 @@ function CategoryRow({ category, amount, percentage, color, count }) {
             {category}
           </span>
           <span className="ml-2 shrink-0 text-xs font-semibold text-slate-100 tabular-nums">
-            ${amount.toFixed(2)}
+            ₹{amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </span>
         </div>
 
@@ -61,7 +61,7 @@ const CustomTooltip = ({ active, payload }) => {
     <div className="rounded-xl border border-slate-700 bg-slate-900/95 px-3 py-2 shadow-xl backdrop-blur-md">
       <p className="text-xs font-semibold text-slate-200">{name}</p>
       <p className="text-sm font-bold" style={{ color: inner?.fill }}>
-        ${value.toFixed(2)}
+        ₹{value.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
       </p>
     </div>
   );

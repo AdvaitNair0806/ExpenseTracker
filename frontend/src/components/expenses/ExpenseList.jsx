@@ -97,7 +97,7 @@ export default function ExpenseList({ expenses, onDelete, isLoading }) {
             <div className="flex items-center gap-4">
               <div className="text-right">
                 <span className="text-base font-bold text-white tracking-tight">
-                  -${parseFloat(expense.amount).toFixed(2)}
+                  -₹{parseFloat(expense.amount).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </span>
                 {expense.notes && (
                   <p className="text-[11px] text-slate-500 truncate max-w-[150px]">{expense.notes}</p>
