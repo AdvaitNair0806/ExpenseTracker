@@ -1,5 +1,14 @@
 [
   {
+    "amount": 200.0,
+    "category": "Transportation",
+    "vendor": "Metro",
+    "date": "2026-10-20",
+    "notes": "Spent 200 on metro ticket this morning",
+    "type": "expense",
+    "id": "tx_d81399b8"
+  },
+  {
     "id": "tx_f5d6e7a8",
     "amount": 75000.0,
     "category": "Salary",
