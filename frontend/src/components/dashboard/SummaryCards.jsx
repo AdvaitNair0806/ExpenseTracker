@@ -1,123 +1,97 @@
 import React from 'react';
-import { TrendingUp, TrendingDown, Wallet, ArrowUpRight } from 'lucide-react';
+import { TrendingUp, TrendingDown, Wallet } from 'lucide-react';
 
-const CARD_CONFIG = {
-  balance: {
-    label: 'Total Balance',
-    icon: Wallet,
-    gradient: 'from-emerald-500/15 to-teal-500/5',
-    border: 'border-emerald-500/25',
-    iconBg: 'bg-emerald-500/15 text-emerald-400',
-    valueColor: 'text-emerald-400',
-    ring: 'ring-emerald-500/20',
-  },
-  income: {
-    label: 'Total Income',
-    icon: TrendingUp,
-    gradient: 'from-cyan-500/15 to-blue-500/5',
-    border: 'border-cyan-500/25',
-    iconBg: 'bg-cyan-500/15 text-cyan-400',
-    valueColor: 'text-cyan-400',
-    ring: 'ring-cyan-500/20',
-  },
-  expenses: {
-    label: 'Total Expenses',
-    icon: TrendingDown,
-    gradient: 'from-rose-500/15 to-pink-500/5',
-    border: 'border-rose-500/25',
-    iconBg: 'bg-rose-500/15 text-rose-400',
-    valueColor: 'text-rose-400',
-    ring: 'ring-rose-500/20',
-  },
-};
-
-function Skeleton() {
-  return (
-    <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-6 animate-pulse">
-      <div className="flex items-center justify-between mb-4">
-        <div className="h-3 w-28 bg-slate-800 rounded-full" />
-        <div className="h-9 w-9 bg-slate-800 rounded-xl" />
-      </div>
-      <div className="h-8 w-36 bg-slate-800 rounded-lg mt-2" />
-      <div className="h-3 w-20 bg-slate-800 rounded-full mt-3" />
-    </div>
-  );
-}
-
-function SummaryCard({ type, value, subLabel, isLoading }) {
-  const cfg = CARD_CONFIG[type];
-  const Icon = cfg.icon;
-
-  if (isLoading) return <Skeleton />;
-
-  const formatted = new Intl.NumberFormat('en-IN', {
+function fmtINR(val) {
+  return new Intl.NumberFormat('en-IN', {
     style: 'currency',
     currency: 'INR',
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(value ?? 0);
+    maximumFractionDigits: 0,
+  }).format(val ?? 0);
+}
+
+function StatCard({ label, value, subtext, icon: Icon, type = 'neutral' }) {
+  const typeStyles = {
+    income: {
+      badgeBg: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
+      valueColor: 'text-emerald-400',
+    },
+    expense: {
+      badgeBg: 'bg-rose-500/10 text-rose-400 border-rose-500/20',
+      valueColor: 'text-rose-400',
+    },
+    neutral: {
+      badgeBg: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
+      valueColor: 'text-slate-100',
+    },
+  };
+
+  const style = typeStyles[type] || typeStyles.neutral;
 
   return (
-    <div
-      className={`
-        relative overflow-hidden rounded-2xl border p-6
-        bg-gradient-to-br ${cfg.gradient} ${cfg.border}
-        backdrop-blur-sm
-        transition-all duration-300 hover:scale-[1.02] hover:shadow-xl
-        hover:ring-2 ${cfg.ring}
-        group cursor-default
-      `}
-    >
-      {/* Glow orb */}
-      <div className="pointer-events-none absolute -top-8 -right-8 h-32 w-32 rounded-full bg-current opacity-5 blur-2xl" />
-
-      <div className="flex items-start justify-between">
-        <span className="text-xs font-semibold uppercase tracking-widest text-slate-400">
-          {cfg.label}
-        </span>
-        <span className={`p-2 rounded-xl ${cfg.iconBg} ring-1 ${cfg.ring}`}>
-          <Icon className="h-4 w-4" />
-        </span>
+    <div className="ui-card p-5 flex flex-col justify-between">
+      <div className="flex items-center justify-between mb-3">
+        <span className="text-xs font-medium text-slate-400">{label}</span>
+        <div className={`w-8 h-8 rounded-lg flex items-center justify-center border ${style.badgeBg}`}>
+          <Icon size={16} />
+        </div>
       </div>
-
-      <p className={`mt-4 text-3xl font-extrabold tracking-tight ${cfg.valueColor} tabular-nums`}>
-        {formatted}
-      </p>
-
-      {subLabel && (
-        <p className="mt-2 flex items-center gap-1 text-xs text-slate-400">
-          <ArrowUpRight className="h-3 w-3 text-slate-500" />
-          {subLabel}
+      <div>
+        <p className={`text-2xl font-bold tracking-tight tabular-nums ${style.valueColor}`}>
+          {fmtINR(value)}
         </p>
-      )}
+        {subtext && (
+          <p className="mt-1 text-xs text-slate-500 font-normal">{subtext}</p>
+        )}
+      </div>
     </div>
   );
 }
 
 export default function SummaryCards({ summary, isLoading }) {
-  const savingsRate = summary?.total_income > 0
-    ? ((summary.total_balance / summary.total_income) * 100).toFixed(1)
-    : 0;
+  if (isLoading) {
+    return (
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {[1, 2, 3].map((i) => (
+          <div key={i} className="ui-card p-5 animate-pulse">
+            <div className="flex justify-between items-center mb-3">
+              <div className="h-3 w-20 bg-slate-800 rounded" />
+              <div className="w-8 h-8 rounded-lg bg-slate-800" />
+            </div>
+            <div className="h-7 w-32 bg-slate-800 rounded mb-2" />
+            <div className="h-3 w-24 bg-slate-800/60 rounded" />
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  const savingsRate =
+    summary?.total_income > 0
+      ? ((summary.total_balance / summary.total_income) * 100).toFixed(1)
+      : '0.0';
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-      <SummaryCard
-        type="balance"
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <StatCard
+        label="Net Balance"
         value={summary?.total_balance}
-        subLabel={`${savingsRate}% savings rate`}
-        isLoading={isLoading}
+        subtext={`${savingsRate}% of total income retained`}
+        icon={Wallet}
+        type="neutral"
       />
-      <SummaryCard
-        type="income"
+      <StatCard
+        label="Total Income"
         value={summary?.total_income}
-        subLabel={`${summary?.income_count ?? 0} income sources`}
-        isLoading={isLoading}
+        subtext={`${summary?.income_count ?? 0} recorded transaction${(summary?.income_count ?? 0) !== 1 ? 's' : ''}`}
+        icon={TrendingUp}
+        type="income"
       />
-      <SummaryCard
-        type="expenses"
+      <StatCard
+        label="Total Expenses"
         value={summary?.total_expenses}
-        subLabel={`${summary?.expense_count ?? 0} transactions`}
-        isLoading={isLoading}
+        subtext={`${summary?.expense_count ?? 0} recorded transaction${(summary?.expense_count ?? 0) !== 1 ? 's' : ''}`}
+        icon={TrendingDown}
+        type="expense"
       />
     </div>
   );

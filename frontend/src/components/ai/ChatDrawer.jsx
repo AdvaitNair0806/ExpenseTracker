@@ -1,11 +1,5 @@
-/**
- * ChatDrawer.jsx
- *
- * A slide-in chat drawer accessible from anywhere in the app via a FAB button.
- * Opens from the bottom-right corner. Independent of page routing.
- */
 import React, { useState } from 'react';
-import { MessageCircle, X, Sparkles } from 'lucide-react';
+import { MessageSquare, X } from 'lucide-react';
 import AiAdvisorChat from './AiAdvisorChat';
 
 export default function ChatDrawer() {
@@ -13,75 +7,48 @@ export default function ChatDrawer() {
 
   return (
     <>
-      {/* FAB button */}
+      {/* Floating Action Button */}
       <button
         id="chat-fab-btn"
-        onClick={() => setOpen(o => !o)}
+        onClick={() => setOpen((o) => !o)}
         title="AI Financial Advisor"
-        className={`
-          fixed bottom-6 right-6 z-40
-          flex h-13 w-13 items-center justify-center gap-2.5
-          rounded-full shadow-2xl shadow-violet-500/30
-          bg-gradient-to-br from-violet-600 to-indigo-700
-          text-white ring-2 ring-violet-500/40
-          transition-all duration-300 active:scale-90
-          ${open ? 'scale-0 opacity-0 pointer-events-none' : 'scale-100 opacity-100'}
-        `}
-        style={{ width: 52, height: 52 }}
+        className={`fixed bottom-6 right-6 z-40 flex items-center justify-center w-12 h-12 rounded-full bg-blue-600 hover:bg-blue-500 text-white shadow-lg border border-blue-400/30 transition-all ${
+          open ? 'scale-0 opacity-0 pointer-events-none' : 'scale-100 opacity-100'
+        }`}
       >
-        <MessageCircle className="h-6 w-6" />
-        {/* Pulse ring */}
-        <span className="absolute h-full w-full animate-ping rounded-full bg-violet-500 opacity-15" />
+        <MessageSquare size={18} />
       </button>
 
       {/* Backdrop */}
       {open && (
         <div
-          className="fixed inset-0 z-40 bg-slate-950/40 backdrop-blur-sm"
+          className="fixed inset-0 z-40 bg-black/50 backdrop-blur-xs"
           onClick={() => setOpen(false)}
         />
       )}
 
-      {/* Drawer panel */}
+      {/* Drawer Panel */}
       <div
-        className={`
-          fixed bottom-0 right-0 z-50
-          w-full sm:w-[420px] sm:bottom-6 sm:right-6
-          flex flex-col
-          rounded-t-2xl sm:rounded-2xl
-          border border-slate-700/60
-          bg-slate-900 shadow-2xl shadow-black/60
-          transition-all duration-300 ease-out
-          ${open
-            ? 'translate-y-0 opacity-100'
-            : 'translate-y-8 opacity-0 pointer-events-none'}
-        `}
-        style={{ height: 'min(600px, 80vh)' }}
+        className={`fixed bottom-0 right-0 z-50 w-full sm:w-[420px] sm:bottom-6 sm:right-6 flex flex-col rounded-t-xl sm:rounded-xl border border-[#1e293b] bg-[#0e1422] shadow-2xl transition-all duration-200 ${
+          open
+            ? 'translate-y-0 opacity-100 pointer-events-auto'
+            : 'translate-y-6 opacity-0 pointer-events-none'
+        }`}
+        style={{ height: 'min(620px, 85vh)' }}
       >
-        {/* Drawer handle (mobile) */}
-        <div className="flex items-center justify-between border-b border-slate-800 px-4 py-3 sm:hidden">
-          <div className="flex items-center gap-2">
-            <Sparkles className="h-4 w-4 text-violet-400" />
-            <span className="text-sm font-bold text-white">AI Advisor</span>
-          </div>
+        {/* Drawer Bar */}
+        <div className="flex items-center justify-between px-4 py-2.5 border-b border-[#1e293b]/70 bg-[#141c2e] rounded-t-xl">
+          <span className="text-xs font-semibold text-slate-200">AI Assistant</span>
           <button
             onClick={() => setOpen(false)}
-            className="flex h-7 w-7 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-800 hover:text-white transition-colors"
+            className="p-1 rounded text-slate-400 hover:text-slate-100 hover:bg-slate-800 transition-colors"
           >
-            <X className="h-4 w-4" />
+            <X size={15} />
           </button>
         </div>
 
-        {/* Close button (desktop, overlaid on chat header) */}
-        <button
-          onClick={() => setOpen(false)}
-          className="absolute right-3 top-3 z-10 hidden sm:flex h-7 w-7 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-800 hover:text-white transition-colors"
-        >
-          <X className="h-4 w-4" />
-        </button>
-
-        {/* Chat widget fills drawer */}
-        <div className="flex-1 min-h-0 overflow-hidden rounded-b-2xl">
+        {/* Content */}
+        <div className="flex-1 min-h-0">
           <AiAdvisorChat />
         </div>
       </div>

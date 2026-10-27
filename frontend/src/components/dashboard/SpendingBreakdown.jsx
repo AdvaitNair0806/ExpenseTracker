@@ -1,143 +1,96 @@
-import React, { useMemo } from 'react';
-import {
-  PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend,
-} from 'recharts';
-import { PieChart as PieIcon } from 'lucide-react';
+import React from 'react';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 
-// Curated palette — harmonious, not generic
 const PALETTE = [
-  '#10b981', // emerald
-  '#06b6d4', // cyan
-  '#8b5cf6', // violet
-  '#f59e0b', // amber
-  '#ec4899', // pink
   '#3b82f6', // blue
-  '#f97316', // orange
-  '#14b8a6', // teal
-  '#a855f7', // purple
-  '#84cc16', // lime
+  '#10b981', // emerald
+  '#f59e0b', // amber
+  '#f43f5e', // rose
+  '#8b5cf6', // violet
+  '#06b6d4', // cyan
+  '#64748b', // slate
 ];
-
-function CategoryRow({ category, amount, percentage, color, count }) {
-  return (
-    <div className="group flex items-center gap-3 py-2.5">
-      {/* Color dot */}
-      <span
-        className="h-2.5 w-2.5 shrink-0 rounded-full"
-        style={{ background: color }}
-      />
-
-      {/* Label + count */}
-      <div className="min-w-0 flex-1">
-        <div className="flex items-baseline justify-between mb-1">
-          <span className="truncate text-xs font-medium text-slate-200">
-            {category}
-          </span>
-          <span className="ml-2 shrink-0 text-xs font-semibold text-slate-100 tabular-nums">
-            ₹{amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-          </span>
-        </div>
-
-        {/* Progress bar */}
-        <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-800">
-          <div
-            className="h-full rounded-full transition-all duration-700 ease-out"
-            style={{ width: `${Math.min(percentage, 100)}%`, background: color }}
-          />
-        </div>
-
-        <p className="mt-0.5 text-[10px] text-slate-500">
-          {percentage.toFixed(1)}% · {count} txn{count !== 1 ? 's' : ''}
-        </p>
-      </div>
-    </div>
-  );
-}
 
 const CustomTooltip = ({ active, payload }) => {
   if (!active || !payload?.length) return null;
   const { name, value, payload: inner } = payload[0];
   return (
-    <div className="rounded-xl border border-slate-700 bg-slate-900/95 px-3 py-2 shadow-xl backdrop-blur-md">
-      <p className="text-xs font-semibold text-slate-200">{name}</p>
-      <p className="text-sm font-bold" style={{ color: inner?.fill }}>
-        ₹{value.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-      </p>
+    <div className="bg-[#141c2e] border border-[#1e293b] p-2.5 rounded-lg shadow-xl text-xs">
+      <div className="font-semibold text-slate-200 mb-1">{name}</div>
+      <div className="text-slate-400">
+        ₹{value.toLocaleString('en-IN', { maximumFractionDigits: 0 })}
+        <span className="ml-1 text-slate-500">({inner.percentage?.toFixed(1) ?? 0}%)</span>
+      </div>
     </div>
   );
 };
 
-function Skeleton() {
-  return (
-    <div className="animate-pulse space-y-3">
-      <div className="mx-auto h-44 w-44 rounded-full bg-slate-800/60" />
-      {[1, 2, 3, 4].map(i => (
-        <div key={i} className="flex items-center gap-3">
-          <div className="h-2.5 w-2.5 rounded-full bg-slate-800" />
-          <div className="flex-1 space-y-1">
-            <div className="h-2 w-full rounded bg-slate-800" />
-            <div className="h-1.5 w-3/4 rounded-full bg-slate-800" />
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
 export default function SpendingBreakdown({ summary, isLoading }) {
-  const data = useMemo(() => {
-    if (!summary?.category_details?.length) return [];
-    return summary.category_details.map((d, i) => ({
-      name: d.category,
-      value: d.amount,
-      percentage: d.percentage,
-      count: d.count,
-      fill: PALETTE[i % PALETTE.length],
-    }));
-  }, [summary]);
+  const total = summary?.total_expenses ?? 0;
 
-  const hasData = data.length > 0;
+  // Handle both category_details (array) and category_breakdown (dict or array)
+  let rawList = [];
+  if (Array.isArray(summary?.category_details) && summary.category_details.length > 0) {
+    rawList = summary.category_details.map(item => ({
+      name: item.category,
+      value: item.amount,
+      percentage: item.percentage ?? (total > 0 ? (item.amount / total) * 100 : 0),
+      count: item.count ?? 1,
+    }));
+  } else if (summary?.category_breakdown && typeof summary.category_breakdown === 'object') {
+    if (Array.isArray(summary.category_breakdown)) {
+      rawList = summary.category_breakdown.map(item => ({
+        name: item.category || item.name,
+        value: item.total_amount || item.amount || item.value || 0,
+        percentage: total > 0 ? ((item.total_amount || item.amount || 0) / total) * 100 : 0,
+        count: item.transaction_count || item.count || 1,
+      }));
+    } else {
+      rawList = Object.entries(summary.category_breakdown).map(([cat, amt]) => ({
+        name: cat,
+        value: Number(amt),
+        percentage: total > 0 ? (Number(amt) / total) * 100 : 0,
+        count: 1,
+      }));
+    }
+  }
+
+  const data = rawList.map((entry, idx) => ({
+    ...entry,
+    color: PALETTE[idx % PALETTE.length],
+  }));
 
   return (
-    <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-6 backdrop-blur-sm">
+    <div className="ui-card p-5 h-full flex flex-col justify-between">
       {/* Header */}
-      <div className="mb-5 flex items-center gap-2">
-        <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-violet-500/15 text-violet-400 ring-1 ring-violet-500/25">
-          <PieIcon className="h-4 w-4" />
-        </span>
-        <div>
-          <h3 className="text-sm font-bold text-white">Spending Breakdown</h3>
-          <p className="text-[11px] text-slate-400">Expenses by category</p>
-        </div>
+      <div className="mb-3">
+        <h2 className="text-sm font-semibold text-slate-100 tracking-tight">Spending Breakdown</h2>
+        <p className="text-xs text-slate-500 mt-0.5">Top expenditure categories</p>
       </div>
 
       {isLoading ? (
-        <Skeleton />
-      ) : !hasData ? (
-        <div className="flex flex-col items-center justify-center gap-2 py-10 text-center">
-          <PieIcon className="h-8 w-8 text-slate-700" />
-          <p className="text-sm text-slate-400">No expense data yet.</p>
+        <div className="h-44 w-full bg-slate-800/40 rounded-lg animate-pulse" />
+      ) : data.length === 0 ? (
+        <div className="h-44 flex items-center justify-center text-xs text-slate-500">
+          No expense transactions recorded yet
         </div>
       ) : (
         <>
-          {/* Recharts Donut */}
-          <div className="mx-auto h-52 w-full max-w-xs">
+          {/* Donut Chart */}
+          <div className="h-36 w-full relative">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
                   data={data}
                   cx="50%"
                   cy="50%"
-                  innerRadius={55}
-                  outerRadius={85}
+                  innerRadius={36}
+                  outerRadius={56}
                   paddingAngle={3}
                   dataKey="value"
-                  stroke="none"
-                  animationBegin={100}
-                  animationDuration={900}
                 >
-                  {data.map((entry, i) => (
-                    <Cell key={entry.name} fill={entry.fill} opacity={0.9} />
+                  {data.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.color} stroke="#0e1422" strokeWidth={2} />
                   ))}
                 </Pie>
                 <Tooltip content={<CustomTooltip />} />
@@ -145,21 +98,36 @@ export default function SpendingBreakdown({ summary, isLoading }) {
             </ResponsiveContainer>
           </div>
 
-          {/* Category list */}
-          <div className="mt-4 divide-y divide-slate-800/60">
-            {data.map((d) => (
-              <CategoryRow
-                key={d.name}
-                category={d.name}
-                amount={d.value}
-                percentage={d.percentage}
-                count={d.count}
-                color={d.fill}
-              />
+          {/* Category List */}
+          <div className="mt-3 space-y-2 max-h-40 overflow-y-auto pr-1">
+            {data.slice(0, 5).map((cat) => (
+              <div key={cat.name} className="flex items-center justify-between text-xs">
+                <div className="flex items-center gap-2 min-w-0">
+                  <span
+                    className="w-2 h-2 rounded-full shrink-0"
+                    style={{ backgroundColor: cat.color }}
+                  />
+                  <span className="text-slate-300 truncate">{cat.name}</span>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className="text-slate-400 font-medium tabular-nums">
+                    ₹{cat.value.toLocaleString('en-IN', { maximumFractionDigits: 0 })}
+                  </span>
+                  <span className="text-[11px] text-slate-500 w-9 text-right tabular-nums">
+                    {cat.percentage.toFixed(0)}%
+                  </span>
+                </div>
+              </div>
             ))}
           </div>
         </>
       )}
+
+      {/* Footer note */}
+      <div className="mt-3 pt-3 border-t border-[#1e293b]/60 flex justify-between items-center text-xs text-slate-500">
+        <span>Categories tracked</span>
+        <span className="font-semibold text-slate-400">{data.length}</span>
+      </div>
     </div>
   );
 }

@@ -1,142 +1,120 @@
-/**
- * AddTransactionModal.jsx
- *
- * Three-tab modal for adding transactions:
- *  1. AI Quick Add  – type a casual note → Groq parses → editable preview → save
- *  2. Scan Receipt  – drag/drop or pick an image → Groq vision → editable preview → save
- *  3. Manual Entry  – classic form, always available as fallback
- */
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import {
   X, Sparkles, Camera, Plus,
   Loader2, CheckCircle2, AlertCircle,
   ArrowLeft, SendHorizonal, Upload, ImageIcon,
-  Pencil, Cpu, Wand2,
+  Pencil, Cpu, Wand2
 } from 'lucide-react';
 import { transactionApi } from '../../services/api';
-
-// ─── Constants ────────────────────────────────────────────────────────────────
 
 const CATEGORIES = [
   'Food & Dining', 'Groceries', 'Transportation', 'Housing & Utilities',
   'Entertainment', 'Healthcare', 'Shopping', 'Travel', 'Education',
-  'Personal Care', 'Salary', 'Freelance', 'Investment', 'Miscellaneous',
+  'Salary', 'Freelance', 'Miscellaneous'
 ];
 
 const TABS = [
-  { id: 'ai-text',    label: 'AI Quick Add',   icon: Wand2,   accent: 'violet' },
-  { id: 'ai-receipt', label: 'Scan Receipt',   icon: Camera,  accent: 'cyan'   },
-  { id: 'manual',     label: 'Manual Entry',   icon: Plus,    accent: 'emerald' },
+  { id: 'ai-text',    label: 'AI Quick Add', icon: Wand2 },
+  { id: 'ai-receipt', label: 'Scan Receipt', icon: Camera },
+  { id: 'manual',     label: 'Manual Entry', icon: Plus },
 ];
-
-const ACCENT = {
-  violet:  { ring: 'ring-violet-500/30',  bg: 'bg-violet-500/10',  text: 'text-violet-400',  border: 'border-violet-500/30',  btn: 'bg-violet-600 hover:bg-violet-500 shadow-violet-500/25',  tab: 'border-violet-500 text-violet-400'  },
-  cyan:    { ring: 'ring-cyan-500/30',    bg: 'bg-cyan-500/10',    text: 'text-cyan-400',    border: 'border-cyan-500/30',    btn: 'bg-cyan-600   hover:bg-cyan-500   shadow-cyan-500/25',    tab: 'border-cyan-500   text-cyan-400'    },
-  emerald: { ring: 'ring-emerald-500/30', bg: 'bg-emerald-500/10', text: 'text-emerald-400', border: 'border-emerald-500/30', btn: 'bg-emerald-600 hover:bg-emerald-500 shadow-emerald-500/25', tab: 'border-emerald-500 text-emerald-400' },
-};
-
-// ─── Shared Primitives ────────────────────────────────────────────────────────
-
-const inputCls = `
-  w-full rounded-xl border border-slate-800 bg-slate-950/80 px-3.5 py-2.5
-  text-sm text-slate-100 placeholder-slate-600
-  focus:outline-none focus:border-emerald-500/60 focus:ring-1 focus:ring-emerald-500/30
-  transition-all duration-200
-`;
 
 function Field({ label, required, hint, children }) {
   return (
-    <label className="block">
-      <span className="mb-1.5 flex items-center gap-1">
-        <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">{label}</span>
-        {required && <span className="text-rose-400 text-[10px]">*</span>}
+    <label className="block mb-3 last:mb-0">
+      <span className="mb-1.5 flex items-center justify-between">
+        <span className="text-[11px] font-medium text-slate-400">
+          {label} {required && <span className="text-rose-400">*</span>}
+        </span>
+        {hint && <span className="text-[10px] text-slate-500">{hint}</span>}
       </span>
       {children}
-      {hint && <p className="mt-1 text-[10px] text-slate-600">{hint}</p>}
     </label>
   );
 }
 
 function TypeToggle({ value, onChange }) {
   return (
-    <div className="flex gap-1.5 rounded-xl border border-slate-800 bg-slate-950/60 p-1">
-      {['expense', 'income'].map(t => (
+    <div className="flex bg-[#060911] border border-[#1e293b] rounded-lg p-0.5 mb-3">
+      {['expense', 'income'].map((t) => (
         <button
           key={t}
           type="button"
           onClick={() => onChange(t)}
-          className={`flex-1 rounded-lg py-2 text-xs font-bold capitalize transition-all ${
+          className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-all ${
             value === t
               ? t === 'expense'
-                ? 'bg-rose-600    text-white shadow ring-1 ring-rose-500/30'
-                : 'bg-emerald-600 text-white shadow ring-1 ring-emerald-500/30'
-              : 'text-slate-500 hover:text-slate-200'
+                ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
+                : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+              : 'text-slate-400 hover:text-slate-200'
           }`}
         >
-          {t === 'expense' ? '↓ Expense' : '↑ Income'}
+          {t === 'expense' ? 'Expense' : 'Income'}
         </button>
       ))}
     </div>
   );
 }
 
-// ─── Editable Preview Form (shared between AI tabs) ──────────────────────────
-
-function PreviewForm({ fields, onChange, accent = 'emerald', source = 'AI' }) {
-  const a = ACCENT[accent];
+function PreviewForm({ fields, onChange, source = 'AI' }) {
   return (
-    <div className={`rounded-xl border ${a.border} ${a.bg} p-4 space-y-3`}>
-      {/* Badge */}
-      <div className="flex items-center gap-2 mb-1">
-        <span className={`flex h-5 w-5 items-center justify-center rounded-md ${a.bg} ${a.text}`}>
-          <CheckCircle2 className="h-3.5 w-3.5" />
-        </span>
-        <span className={`text-[11px] font-bold uppercase tracking-wider ${a.text}`}>
-          {source} extracted — review &amp; correct
-        </span>
-        <span className={`ml-auto flex items-center gap-1 text-[10px] ${a.text} opacity-70`}>
-          <Pencil className="h-2.5 w-2.5" /> editable
+    <div className="p-4 rounded-lg bg-[#060911] border border-[#1e293b] space-y-3">
+      <div className="flex items-center justify-between pb-2 border-b border-[#1e293b]">
+        <div className="flex items-center gap-1.5 text-xs text-blue-400 font-medium">
+          <CheckCircle2 size={14} />
+          <span>{source} Extracted — Review & Edit</span>
+        </div>
+        <span className="text-[10px] text-slate-500 flex items-center gap-1">
+          <Pencil size={11} /> editable
         </span>
       </div>
 
-      <TypeToggle value={fields.type} onChange={v => onChange('type', v)} />
+      <TypeToggle value={fields.type} onChange={(v) => onChange('type', v)} />
 
       <div className="grid grid-cols-2 gap-3">
         <Field label="Amount (₹)" required>
           <input
-            type="number" step="0.01" min="0.01" required
+            type="number"
+            step="0.01"
+            min="0.01"
+            required
             value={fields.amount}
-            onChange={e => onChange('amount', e.target.value)}
-            className={inputCls}
+            onChange={(e) => onChange('amount', e.target.value)}
+            className="ui-input text-xs"
           />
         </Field>
         <Field label="Date">
           <input
             type="date"
             value={fields.date}
-            onChange={e => onChange('date', e.target.value)}
-            className={inputCls}
+            onChange={(e) => onChange('date', e.target.value)}
+            className="ui-input text-xs"
           />
         </Field>
       </div>
 
       <Field label="Vendor / Merchant" required>
         <input
-          type="text" required
+          type="text"
+          required
           value={fields.vendor}
-          onChange={e => onChange('vendor', e.target.value)}
-          placeholder="e.g. McDonald's, Uber"
-          className={inputCls}
+          onChange={(e) => onChange('vendor', e.target.value)}
+          placeholder="e.g. Swiggy, Uber, D-Mart"
+          className="ui-input text-xs"
         />
       </Field>
 
       <Field label="Category">
         <select
           value={fields.category}
-          onChange={e => onChange('category', e.target.value)}
-          className={inputCls}
+          onChange={(e) => onChange('category', e.target.value)}
+          className="ui-input text-xs cursor-pointer"
         >
-          {CATEGORIES.map(c => <option key={c}>{c}</option>)}
+          {CATEGORIES.map((c) => (
+            <option key={c} value={c} className="bg-[#0e1422] text-slate-200">
+              {c}
+            </option>
+          ))}
         </select>
       </Field>
 
@@ -144,95 +122,87 @@ function PreviewForm({ fields, onChange, accent = 'emerald', source = 'AI' }) {
         <input
           type="text"
           value={fields.notes}
-          onChange={e => onChange('notes', e.target.value)}
-          placeholder="Optional description"
-          className={inputCls}
+          onChange={(e) => onChange('notes', e.target.value)}
+          placeholder="Optional remarks"
+          className="ui-input text-xs"
         />
       </Field>
     </div>
   );
 }
 
-// ─── Loading Overlay ──────────────────────────────────────────────────────────
+function ErrorBanner({ message }) {
+  return (
+    <div className="flex items-start gap-2 p-2.5 rounded-lg border border-rose-500/20 bg-rose-500/10 text-xs text-rose-300">
+      <AlertCircle size={14} className="shrink-0 mt-0.5" />
+      <span>{message}</span>
+    </div>
+  );
+}
 
 function AiLoadingOverlay({ label }) {
-  const [dot, setDot] = useState(0);
-  useEffect(() => {
-    const t = setInterval(() => setDot(d => (d + 1) % 4), 420);
-    return () => clearInterval(t);
-  }, []);
   return (
-    <div className="flex flex-col items-center justify-center gap-5 py-10">
-      <div className="relative flex items-center justify-center">
-        <div className="absolute h-20 w-20 animate-ping rounded-full bg-violet-500/10" />
-        <div className="relative flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-600 to-indigo-700 shadow-xl shadow-violet-500/30">
-          <Cpu className="h-7 w-7 text-white animate-pulse" />
-        </div>
-      </div>
-      <div className="text-center">
-        <p className="text-sm font-semibold text-white">{label}{'.'?.repeat(dot + 1) ?? ''}</p>
-        <p className="mt-1 text-xs text-slate-400">Groq Llama is processing your request</p>
-      </div>
-      <div className="flex gap-1.5">
-        {[0,1,2].map(i => (
-          <span
-            key={i}
-            className="h-1.5 w-1.5 rounded-full bg-violet-400 animate-bounce"
-            style={{ animationDelay: `${i * 0.15}s` }}
-          />
-        ))}
+    <div className="flex flex-col items-center justify-center py-12 text-center space-y-3">
+      <Loader2 size={24} className="animate-spin text-blue-500" />
+      <div>
+        <p className="text-sm font-semibold text-slate-200">{label}...</p>
+        <p className="text-xs text-slate-500 mt-1">Groq Llama inference running</p>
       </div>
     </div>
   );
 }
 
-// ─── TAB 1: AI Quick Add (Text) ───────────────────────────────────────────────
-
+// ─── TAB 1: AI Quick Add ──────────────────────────────────────────────
 function AiTextTab({ onSave, onClose }) {
-  const [phase, setPhase] = useState('input');   // 'input' | 'loading' | 'preview' | 'saving'
-  const [note, setNote]   = useState('');
+  const [phase, setPhase] = useState('input');
+  const [note, setNote] = useState('');
   const [error, setError] = useState('');
   const [fields, setFields] = useState({
-    amount: '', category: 'Food & Dining', vendor: '', date: new Date().toISOString().slice(0, 10),
-    notes: '', type: 'expense',
+    amount: '',
+    category: 'Food & Dining',
+    vendor: '',
+    date: new Date().toISOString().slice(0, 10),
+    notes: '',
+    type: 'expense',
   });
 
   const EXAMPLES = [
-    'Spent 200 on metro ticket this morning',
-    'Paid 1200 for Netflix and Spotify together',
-    'Got salary of 45000 from Acme Corp today',
-    'Bought groceries at D-Mart for 850 rupees',
+    'Spent 250 on lunch at Cafe Coffee Day',
+    'Paid 1499 for broadband bill',
+    'Received salary of 65000 from company',
+    'Bought groceries at BigBasket for 850 rupees',
   ];
 
-  const updateField = (key, val) => setFields(prev => ({ ...prev, [key]: val }));
+  const updateField = (key, val) => setFields((prev) => ({ ...prev, [key]: val }));
 
   const handleParse = async () => {
-    if (!note.trim()) { setError('Please describe the transaction.'); return; }
+    if (!note.trim()) {
+      setError('Please provide a short transaction description.');
+      return;
+    }
     setError('');
     setPhase('loading');
     try {
       const parsed = await transactionApi.addFromText(note.trim());
-      // Backend saves & returns the full record — pre-fill but also let user edit
       setFields({
-        amount:   String(parsed.amount ?? ''),
-        category: parsed.category  ?? 'Food & Dining',
-        vendor:   parsed.vendor    ?? '',
-        date:     parsed.date      ?? new Date().toISOString().slice(0, 10),
-        notes:    parsed.notes     ?? note,
-        type:     parsed.type      ?? 'expense',
-        _id:      parsed.id,          // carry saved id
+        amount: String(parsed.amount ?? ''),
+        category: parsed.category ?? 'Food & Dining',
+        vendor: parsed.vendor ?? '',
+        date: parsed.date ?? new Date().toISOString().slice(0, 10),
+        notes: parsed.notes ?? note,
+        type: parsed.type ?? 'expense',
+        _id: parsed.id,
       });
       setPhase('preview');
     } catch (err) {
-      setError(err.message || 'AI parsing failed. Check your GROQ_API_KEY or try manual entry.');
+      setError(err.message || 'AI parsing failed. Please check GROQ_API_KEY in backend/.env.');
       setPhase('input');
     }
   };
 
   const handleSave = async () => {
-    // The backend already saved on parse; just close and refresh
     setPhase('saving');
-    await new Promise(r => setTimeout(r, 400)); // brief UX beat
+    await new Promise((r) => setTimeout(r, 200));
     onSave();
     onClose();
   };
@@ -243,62 +213,42 @@ function AiTextTab({ onSave, onClose }) {
     <div className="space-y-4">
       {phase === 'input' && (
         <>
-          {/* Prompt textarea */}
           <div>
-            <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wider text-slate-400">
-              Describe your transaction
+            <label className="block text-xs font-medium text-slate-400 mb-1.5">
+              Natural Language Prompt
             </label>
-            <div className="relative">
-              <textarea
-                id="ai-text-input"
-                rows={3}
-                value={note}
-                onChange={e => { setNote(e.target.value); setError(''); }}
-                onKeyDown={e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) handleParse(); }}
-                placeholder={`e.g. "${EXAMPLES[0]}"`}
-                autoFocus
-                className={`${inputCls} resize-none pr-12 text-sm leading-relaxed`}
-              />
-              {note.trim() && (
-                <button
-                  type="button"
-                  onClick={handleParse}
-                  title="Parse with AI (Ctrl+Enter)"
-                  className="absolute bottom-2.5 right-2.5 flex h-8 w-8 items-center justify-center rounded-lg bg-violet-600 text-white shadow-lg shadow-violet-500/30 hover:bg-violet-500 transition-colors"
-                >
-                  <SendHorizonal className="h-3.5 w-3.5" />
-                </button>
-              )}
-            </div>
-            <p className="mt-1.5 text-[10px] text-slate-500">
-              Press <kbd className="rounded bg-slate-800 px-1 py-px text-slate-300">Ctrl</kbd>+<kbd className="rounded bg-slate-800 px-1 py-px text-slate-300">↵</kbd> or click ↗ to parse
+            <textarea
+              rows={3}
+              value={note}
+              onChange={(e) => {
+                setNote(e.target.value);
+                setError('');
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) handleParse();
+              }}
+              placeholder="e.g. Paid 450 for cinema ticket via UPI yesterday"
+              className="ui-input resize-none text-xs"
+            />
+            <p className="mt-1 text-[11px] text-slate-500">
+              Press <kbd className="px-1 rounded bg-[#1e293b] text-slate-300">Ctrl</kbd>+<kbd className="px-1 rounded bg-[#1e293b] text-slate-300">Enter</kbd> to parse
             </p>
           </div>
 
-          {/* Example chips */}
           <div>
-            <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-slate-500">Try an example</p>
-            <div className="flex flex-wrap gap-2">
-              {EXAMPLES.map(ex => (
+            <p className="text-[11px] font-medium text-slate-500 mb-2">Prompt examples</p>
+            <div className="flex flex-wrap gap-1.5">
+              {EXAMPLES.map((ex) => (
                 <button
                   key={ex}
                   type="button"
                   onClick={() => setNote(ex)}
-                  className="rounded-lg border border-slate-800 bg-slate-950/60 px-2.5 py-1.5 text-[10px] text-slate-400 hover:border-violet-500/40 hover:text-violet-300 transition-all"
+                  className="px-2.5 py-1 rounded-md text-[11px] bg-[#060911] border border-[#1e293b] text-slate-400 hover:text-slate-200 hover:border-slate-700 transition-colors"
                 >
                   {ex}
                 </button>
               ))}
             </div>
-          </div>
-
-          {/* Info banner */}
-          <div className="flex items-start gap-2.5 rounded-xl border border-violet-500/20 bg-violet-500/5 px-3 py-2.5">
-            <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-violet-400" />
-            <p className="text-[11px] leading-relaxed text-slate-400">
-              <span className="font-semibold text-violet-300">Groq Llama 3.3</span> extracts amount, vendor,
-              category, date and type. You'll review everything before saving.
-            </p>
           </div>
 
           {error && <ErrorBanner message={error} />}
@@ -307,36 +257,39 @@ function AiTextTab({ onSave, onClose }) {
             type="button"
             onClick={handleParse}
             disabled={!note.trim()}
-            className="flex w-full items-center justify-center gap-2 rounded-xl bg-violet-600 py-3 text-sm font-bold text-white shadow-lg shadow-violet-500/20 hover:bg-violet-500 active:scale-[0.98] transition-all disabled:opacity-40"
+            className="ui-btn-primary w-full h-9"
           >
-            <Wand2 className="h-4 w-4" />
-            Parse with AI
+            <Wand2 size={14} />
+            <span>Parse with AI</span>
           </button>
         </>
       )}
 
       {phase === 'preview' && (
         <>
-          <PreviewForm fields={fields} onChange={updateField} accent="violet" source="Groq AI" />
-
+          <PreviewForm fields={fields} onChange={updateField} source="Groq AI" />
           {error && <ErrorBanner message={error} />}
 
-          <div className="flex gap-2">
+          <div className="flex gap-2.5">
             <button
               type="button"
-              onClick={() => { setPhase('input'); setError(''); }}
-              className="flex items-center gap-1.5 rounded-xl border border-slate-800 px-4 py-2.5 text-xs font-semibold text-slate-400 hover:text-white transition-colors"
+              onClick={() => {
+                setPhase('input');
+                setError('');
+              }}
+              className="ui-btn-secondary flex-1 h-9"
             >
-              <ArrowLeft className="h-3.5 w-3.5" /> Re-parse
+              <ArrowLeft size={14} />
+              <span>Back</span>
             </button>
             <button
               type="button"
               onClick={handleSave}
               disabled={phase === 'saving'}
-              className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-violet-600 py-2.5 text-sm font-bold text-white shadow-lg shadow-violet-500/20 hover:bg-violet-500 active:scale-[0.98] transition-all"
+              className="ui-btn-primary flex-1 h-9"
             >
-              {phase === 'saving' ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
-              Confirm &amp; Save
+              <CheckCircle2 size={14} />
+              <span>Confirm & Save</span>
             </button>
           </div>
         </>
@@ -345,25 +298,28 @@ function AiTextTab({ onSave, onClose }) {
   );
 }
 
-// ─── TAB 2: Scan Receipt ──────────────────────────────────────────────────────
-
+// ─── TAB 2: Scan Receipt ──────────────────────────────────────────────
 function ReceiptTab({ onSave, onClose }) {
-  const [phase, setPhase]     = useState('upload');  // 'upload' | 'loading' | 'preview'
-  const [file, setFile]       = useState(null);
-  const [preview, setPreview] = useState(null);      // object URL
+  const [phase, setPhase] = useState('upload');
+  const [file, setFile] = useState(null);
+  const [preview, setPreview] = useState(null);
   const [dragging, setDragging] = useState(false);
-  const [error, setError]     = useState('');
-  const [fields, setFields]   = useState({
-    amount: '', category: 'Food & Dining', vendor: '', date: new Date().toISOString().slice(0, 10),
-    notes: '', type: 'expense',
+  const [error, setError] = useState('');
+  const [fields, setFields] = useState({
+    amount: '',
+    category: 'Food & Dining',
+    vendor: '',
+    date: new Date().toISOString().slice(0, 10),
+    notes: '',
+    type: 'expense',
   });
   const inputRef = useRef(null);
 
-  const updateField = (key, val) => setFields(prev => ({ ...prev, [key]: val }));
+  const updateField = (key, val) => setFields((prev) => ({ ...prev, [key]: val }));
 
   const acceptFile = useCallback((f) => {
     if (!f || !f.type.startsWith('image/')) {
-      setError('Please upload a JPG, PNG or WebP image.');
+      setError('Please upload a valid image (JPG, PNG, or WebP).');
       return;
     }
     setFile(f);
@@ -371,25 +327,21 @@ function ReceiptTab({ onSave, onClose }) {
     setError('');
   }, []);
 
-  // Drag-and-drop
   const onDrop = (e) => {
-    e.preventDefault(); setDragging(false);
+    e.preventDefault();
+    setDragging(false);
     acceptFile(e.dataTransfer.files[0]);
   };
-  const onDragOver = (e) => { e.preventDefault(); setDragging(true); };
-  const onDragLeave = () => setDragging(false);
 
-  // Paste from clipboard (Ctrl+V)
   useEffect(() => {
     const handler = (e) => {
-      const item = Array.from(e.clipboardData?.items ?? []).find(i => i.type.startsWith('image/'));
+      const item = Array.from(e.clipboardData?.items ?? []).find((i) => i.type.startsWith('image/'));
       if (item) acceptFile(item.getAsFile());
     };
     window.addEventListener('paste', handler);
     return () => window.removeEventListener('paste', handler);
   }, [acceptFile]);
 
-  // Cleanup object URL
   useEffect(() => () => preview && URL.revokeObjectURL(preview), [preview]);
 
   const handleScan = async () => {
@@ -398,80 +350,68 @@ function ReceiptTab({ onSave, onClose }) {
     try {
       const parsed = await transactionApi.addFromReceipt(file);
       setFields({
-        amount:   String(parsed.amount ?? ''),
-        category: parsed.category  ?? 'Food & Dining',
-        vendor:   parsed.vendor    ?? '',
-        date:     parsed.date      ?? new Date().toISOString().slice(0, 10),
-        notes:    parsed.notes     ?? '',
-        type:     parsed.type      ?? 'expense',
-        _id:      parsed.id,
+        amount: String(parsed.amount ?? ''),
+        category: parsed.category ?? 'Food & Dining',
+        vendor: parsed.vendor ?? '',
+        date: parsed.date ?? new Date().toISOString().slice(0, 10),
+        notes: parsed.notes ?? '',
+        type: parsed.type ?? 'expense',
+        _id: parsed.id,
       });
       setPhase('preview');
     } catch (err) {
-      setError(err.message || 'Vision parsing failed. Check GROQ_API_KEY or try manual entry.');
+      setError(err.message || 'Vision scan failed. Please verify GROQ_API_KEY in backend/.env.');
       setPhase('upload');
     }
   };
 
-  const handleSave = async () => {
+  const handleSave = () => {
     onSave();
     onClose();
   };
 
-  if (phase === 'loading') return <AiLoadingOverlay label="Reading receipt" />;
+  if (phase === 'loading') return <AiLoadingOverlay label="Analyzing receipt document" />;
 
   return (
     <div className="space-y-4">
       {phase === 'upload' && (
         <>
-          {/* Drop zone */}
           <div
             onClick={() => inputRef.current?.click()}
             onDrop={onDrop}
-            onDragOver={onDragOver}
-            onDragLeave={onDragLeave}
-            className={`
-              relative flex cursor-pointer flex-col items-center justify-center gap-3 rounded-2xl
-              border-2 border-dashed p-8 text-center transition-all duration-200
-              ${dragging
-                ? 'border-cyan-400/70 bg-cyan-500/10 scale-[1.01]'
-                : file
-                  ? 'border-cyan-500/40 bg-cyan-500/5'
-                  : 'border-slate-700 bg-slate-950/40 hover:border-cyan-500/40 hover:bg-cyan-500/5'
-              }
-            `}
+            onDragOver={(e) => {
+              e.preventDefault();
+              setDragging(true);
+            }}
+            onDragLeave={() => setDragging(false)}
+            className={`p-6 rounded-lg border-2 border-dashed cursor-pointer text-center transition-all ${
+              dragging
+                ? 'border-blue-500 bg-blue-500/10'
+                : preview
+                ? 'border-[#1e293b] bg-[#060911]'
+                : 'border-[#1e293b] bg-[#060911] hover:border-slate-700'
+            }`}
           >
-            {/* Image preview thumbnail */}
             {preview ? (
-              <>
-                <div className="relative">
-                  <img
-                    src={preview}
-                    alt="Receipt preview"
-                    className="mx-auto max-h-40 rounded-xl object-contain shadow-xl shadow-black/40 ring-1 ring-slate-700"
-                  />
-                  <div className="absolute -right-2 -top-2 flex h-6 w-6 items-center justify-center rounded-full bg-cyan-500 shadow-lg ring-2 ring-slate-900">
-                    <CheckCircle2 className="h-3.5 w-3.5 text-white" />
-                  </div>
-                </div>
-                <p className="text-xs font-semibold text-cyan-300">{file.name}</p>
-                <p className="text-[10px] text-slate-500">Click to replace · or drag another</p>
-              </>
+              <div className="space-y-2">
+                <img
+                  src={preview}
+                  alt="Receipt Preview"
+                  className="max-h-36 mx-auto rounded border border-[#1e293b] object-contain"
+                />
+                <p className="text-xs text-slate-300 font-medium">{file.name}</p>
+                <p className="text-[11px] text-slate-500">Click or drop another file to replace</p>
+              </div>
             ) : (
-              <>
-                <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-800 ring-1 ring-slate-700">
-                  <Upload className="h-7 w-7 text-slate-500" />
-                </div>
+              <div className="space-y-2 py-2">
+                <Upload size={24} className="mx-auto text-slate-500" />
                 <div>
-                  <p className="text-sm font-semibold text-slate-300">Drop your receipt here</p>
-                  <p className="mt-0.5 text-xs text-slate-500">or click to browse · JPG, PNG, WebP</p>
+                  <p className="text-xs font-medium text-slate-200">
+                    Drop receipt or bill screenshot here
+                  </p>
+                  <p className="text-[11px] text-slate-500 mt-0.5">JPG, PNG, WebP · Ctrl+V supported</p>
                 </div>
-                <div className="flex gap-3 text-[10px] text-slate-600">
-                  <span className="flex items-center gap-1"><ImageIcon className="h-3 w-3" /> Screenshot OK</span>
-                  <span>·</span>
-                  <span>Ctrl+V to paste</span>
-                </div>
-              </>
+              </div>
             )}
           </div>
 
@@ -480,17 +420,8 @@ function ReceiptTab({ onSave, onClose }) {
             type="file"
             accept="image/*"
             className="hidden"
-            onChange={e => acceptFile(e.target.files[0])}
+            onChange={(e) => acceptFile(e.target.files[0])}
           />
-
-          {/* Info banner */}
-          <div className="flex items-start gap-2.5 rounded-xl border border-cyan-500/20 bg-cyan-500/5 px-3 py-2.5">
-            <Camera className="mt-0.5 h-4 w-4 shrink-0 text-cyan-400" />
-            <p className="text-[11px] leading-relaxed text-slate-400">
-              <span className="font-semibold text-cyan-300">Groq Llama 3.2 Vision</span> reads the receipt and
-              extracts total amount, merchant, date and category automatically.
-            </p>
-          </div>
 
           {error && <ErrorBanner message={error} />}
 
@@ -498,47 +429,38 @@ function ReceiptTab({ onSave, onClose }) {
             type="button"
             onClick={handleScan}
             disabled={!file}
-            className="flex w-full items-center justify-center gap-2 rounded-xl bg-cyan-600 py-3 text-sm font-bold text-white shadow-lg shadow-cyan-500/20 hover:bg-cyan-500 active:scale-[0.98] transition-all disabled:opacity-40"
+            className="ui-btn-primary w-full h-9"
           >
-            <Camera className="h-4 w-4" />
-            Scan with AI Vision
+            <Camera size={14} />
+            <span>Scan with Vision AI</span>
           </button>
         </>
       )}
 
       {phase === 'preview' && (
         <>
-          {/* Thumbnail strip */}
-          {preview && (
-            <div className="flex items-center gap-3 rounded-xl border border-slate-800 bg-slate-950/60 px-3 py-2.5">
-              <img src={preview} alt="Receipt" className="h-10 w-10 rounded-lg object-cover ring-1 ring-slate-700" />
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-xs font-semibold text-slate-200">{file?.name}</p>
-                <p className="text-[10px] text-slate-500">Receipt scanned successfully</p>
-              </div>
-              <CheckCircle2 className="h-4 w-4 shrink-0 text-cyan-400" />
-            </div>
-          )}
-
-          <PreviewForm fields={fields} onChange={updateField} accent="cyan" source="Vision AI" />
-
+          <PreviewForm fields={fields} onChange={updateField} source="Vision OCR" />
           {error && <ErrorBanner message={error} />}
 
-          <div className="flex gap-2">
+          <div className="flex gap-2.5">
             <button
               type="button"
-              onClick={() => { setPhase('upload'); setError(''); }}
-              className="flex items-center gap-1.5 rounded-xl border border-slate-800 px-4 py-2.5 text-xs font-semibold text-slate-400 hover:text-white transition-colors"
+              onClick={() => {
+                setPhase('upload');
+                setError('');
+              }}
+              className="ui-btn-secondary flex-1 h-9"
             >
-              <ArrowLeft className="h-3.5 w-3.5" /> Re-scan
+              <ArrowLeft size={14} />
+              <span>Rescan</span>
             </button>
             <button
               type="button"
               onClick={handleSave}
-              className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-cyan-600 py-2.5 text-sm font-bold text-white shadow-lg shadow-cyan-500/20 hover:bg-cyan-500 active:scale-[0.98] transition-all"
+              className="ui-btn-primary flex-1 h-9"
             >
-              <CheckCircle2 className="h-4 w-4" />
-              Confirm &amp; Save
+              <CheckCircle2 size={14} />
+              <span>Confirm & Save</span>
             </button>
           </div>
         </>
@@ -547,196 +469,189 @@ function ReceiptTab({ onSave, onClose }) {
   );
 }
 
-// ─── TAB 3: Manual Entry ──────────────────────────────────────────────────────
-
+// ─── TAB 3: Manual Entry ──────────────────────────────────────────────
 function ManualTab({ onSave, onClose }) {
-  const [busy,   setBusy]   = useState(false);
-  const [error,  setError]  = useState('');
-  const [amount,   setAmount]   = useState('');
+  const [type, setType] = useState('expense');
+  const [amount, setAmount] = useState('');
+  const [vendor, setVendor] = useState('');
   const [category, setCategory] = useState('Food & Dining');
-  const [vendor,   setVendor]   = useState('');
-  const [date,     setDate]     = useState(new Date().toISOString().slice(0, 10));
-  const [notes,    setNotes]    = useState('');
-  const [type,     setType]     = useState('expense');
+  const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
+  const [notes, setNotes] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!amount || !vendor) { setError('Amount and vendor are required.'); return; }
+    if (!amount || isNaN(Number(amount)) || Number(amount) <= 0) {
+      setError('Please provide a valid numeric amount greater than zero.');
+      return;
+    }
+    if (!vendor.trim()) {
+      setError('Vendor name is required.');
+      return;
+    }
+
     setError('');
     setBusy(true);
+
     try {
-      await transactionApi.addManual({
-        amount: parseFloat(amount), category, vendor, date, notes, type,
+      await transactionApi.createTransaction({
+        type,
+        amount: parseFloat(amount),
+        vendor: vendor.trim(),
+        category,
+        date: date || new Date().toISOString().slice(0, 10),
+        notes: notes.trim(),
       });
       onSave();
       onClose();
     } catch (err) {
-      setError(err.message || 'Failed to save. Is the backend running?');
+      setError(err.message || 'Failed to save transaction.');
     } finally {
       setBusy(false);
     }
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form onSubmit={handleSubmit} className="space-y-3">
       <TypeToggle value={type} onChange={setType} />
 
       <div className="grid grid-cols-2 gap-3">
         <Field label="Amount (₹)" required>
           <input
-            type="number" step="0.01" min="0.01" placeholder="0.00"
-            value={amount} onChange={e => setAmount(e.target.value)} required
-            className={inputCls}
+            type="number"
+            step="0.01"
+            min="0.01"
+            required
+            value={amount}
+            onChange={(e) => setAmount(e.target.value)}
+            placeholder="0.00"
+            className="ui-input text-xs"
           />
         </Field>
-        <Field label="Date">
-          <input type="date" value={date} onChange={e => setDate(e.target.value)} className={inputCls} />
+        <Field label="Date" required>
+          <input
+            type="date"
+            required
+            value={date}
+            onChange={(e) => setDate(e.target.value)}
+            className="ui-input text-xs"
+          />
         </Field>
       </div>
 
-      <Field label="Vendor / Merchant" required>
+      <Field label="Vendor / Payee" required>
         <input
-          type="text" placeholder="e.g. Amazon, Starbucks" required
-          value={vendor} onChange={e => setVendor(e.target.value)}
-          className={inputCls}
+          type="text"
+          required
+          value={vendor}
+          onChange={(e) => setVendor(e.target.value)}
+          placeholder="e.g. Swiggy, Uber, Amazon"
+          className="ui-input text-xs"
         />
       </Field>
 
       <Field label="Category">
-        <select value={category} onChange={e => setCategory(e.target.value)} className={inputCls}>
-          {CATEGORIES.map(c => <option key={c}>{c}</option>)}
+        <select
+          value={category}
+          onChange={(e) => setCategory(e.target.value)}
+          className="ui-input text-xs cursor-pointer"
+        >
+          {CATEGORIES.map((c) => (
+            <option key={c} value={c} className="bg-[#0e1422] text-slate-200">
+              {c}
+            </option>
+          ))}
         </select>
       </Field>
 
-      <Field label="Notes" hint="Optional – helps the AI categorize better next time">
+      <Field label="Notes">
         <input
-          type="text" placeholder="Brief description"
-          value={notes} onChange={e => setNotes(e.target.value)}
-          className={inputCls}
+          type="text"
+          value={notes}
+          onChange={(e) => setNotes(e.target.value)}
+          placeholder="Optional remarks"
+          className="ui-input text-xs"
         />
       </Field>
 
       {error && <ErrorBanner message={error} />}
 
       <button
-        type="submit" disabled={busy}
-        className="flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 py-3 text-sm font-bold text-white shadow-lg shadow-emerald-500/20 hover:bg-emerald-500 active:scale-[0.98] transition-all disabled:opacity-50"
+        type="submit"
+        disabled={busy}
+        className="ui-btn-primary w-full h-9 mt-4"
       >
-        {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
-        {busy ? 'Saving…' : 'Save Transaction'}
+        {busy ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle2 size={14} />}
+        <span>{busy ? 'Saving...' : 'Save Transaction'}</span>
       </button>
     </form>
   );
 }
 
-// ─── Error Banner ─────────────────────────────────────────────────────────────
-
-function ErrorBanner({ message }) {
-  return (
-    <div className="flex items-start gap-2.5 rounded-xl border border-rose-500/30 bg-rose-500/10 px-3 py-2.5">
-      <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-rose-400" />
-      <p className="text-xs text-rose-300">{message}</p>
-    </div>
-  );
-}
-
-// ─── Root Modal ───────────────────────────────────────────────────────────────
-
+// ─── Main Modal Component ─────────────────────────────────────────────
 export default function AddTransactionModal({ isOpen, onClose, onAdded }) {
   const [activeTab, setActiveTab] = useState('ai-text');
 
   if (!isOpen) return null;
 
-  const handleAdded = () => {
-    if (onAdded) onAdded();
-  };
-
-  const handleClose = () => {
-    setActiveTab('ai-text');
-    onClose();
-  };
-
-  const currentAccent = TABS.find(t => t.id === activeTab)?.accent ?? 'emerald';
-  const a = ACCENT[currentAccent];
-
   return (
-    /* Backdrop */
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      style={{ background: 'rgba(2,6,23,0.80)', backdropFilter: 'blur(6px)' }}
-      onClick={e => e.target === e.currentTarget && handleClose()}
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs"
+      onClick={(e) => e.target === e.currentTarget && onClose()}
     >
-      <div className="relative w-full max-w-md rounded-2xl border border-slate-800 bg-slate-900 shadow-2xl shadow-black/60 overflow-hidden">
-
-        {/* Subtle top gradient bar matching active tab */}
-        <div className={`absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r ${
-          currentAccent === 'violet'  ? 'from-violet-600 to-indigo-600' :
-          currentAccent === 'cyan'    ? 'from-cyan-500   to-blue-500'   :
-                                        'from-emerald-500 to-teal-500'
-        }`} />
-
-        {/* ── Header ─── */}
-        <div className="flex items-center justify-between px-6 pt-5 pb-4">
+      <div className="w-full max-w-md rounded-xl border border-[#1e293b] bg-[#0e1422] shadow-2xl overflow-hidden flex flex-col">
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-[#1e293b]">
           <div>
-            <h2 className="text-base font-extrabold tracking-tight text-white">Add Transaction</h2>
-            <p className="mt-0.5 text-[11px] text-slate-400">
-              {activeTab === 'ai-text'    ? 'Describe it in plain English — AI does the rest'  :
-               activeTab === 'ai-receipt' ? 'Upload any receipt or payment screenshot'           :
-                                            'Enter details manually'}
+            <h2 className="text-sm font-semibold text-slate-100">Add Transaction</h2>
+            <p className="text-[11px] text-slate-500 mt-0.5">
+              {activeTab === 'ai-text' && 'Natural language prompt parsing'}
+              {activeTab === 'ai-receipt' && 'Document optical character recognition'}
+              {activeTab === 'manual' && 'Standard manual entry'}
             </p>
           </div>
           <button
-            onClick={handleClose}
-            className="flex h-8 w-8 items-center justify-center rounded-xl border border-slate-800 text-slate-400 hover:bg-slate-800 hover:text-white transition-colors"
+            onClick={onClose}
+            className="p-1 rounded text-slate-400 hover:text-slate-100 hover:bg-slate-800 transition-colors"
           >
-            <X className="h-4 w-4" />
+            <X size={16} />
           </button>
         </div>
 
-        {/* ── Tab bar ─── */}
-        <div className="flex gap-0 border-b border-slate-800 px-6">
-          {TABS.map(({ id, label, icon: Icon, accent }) => {
-            const ta = ACCENT[accent];
+        {/* Tab Selection */}
+        <div className="flex border-b border-[#1e293b] px-5 bg-[#090d16]">
+          {TABS.map(({ id, label, icon: Icon }) => {
             const isActive = activeTab === id;
             return (
               <button
                 key={id}
                 type="button"
                 onClick={() => setActiveTab(id)}
-                className={`
-                  flex items-center gap-1.5 border-b-2 py-3 pr-4 text-xs font-semibold
-                  transition-all duration-200
-                  ${isActive
-                    ? `${ta.tab} ${ta.text}`
-                    : 'border-transparent text-slate-500 hover:text-slate-300'}
-                `}
+                className={`flex items-center gap-1.5 py-2.5 px-3 text-xs font-medium border-b-2 transition-all ${
+                  isActive
+                    ? 'border-blue-500 text-blue-400'
+                    : 'border-transparent text-slate-500 hover:text-slate-300'
+                }`}
               >
-                <Icon className="h-3.5 w-3.5" />
-                {label}
+                <Icon size={14} />
+                <span>{label}</span>
               </button>
             );
           })}
         </div>
 
-        {/* ── Tab content ─── */}
-        <div className="px-6 py-5 max-h-[75vh] overflow-y-auto">
-          {activeTab === 'ai-text'    && <AiTextTab    onSave={handleAdded} onClose={handleClose} />}
-          {activeTab === 'ai-receipt' && <ReceiptTab   onSave={handleAdded} onClose={handleClose} />}
-          {activeTab === 'manual'     && <ManualTab    onSave={handleAdded} onClose={handleClose} />}
-        </div>
-
-        {/* ── Footer ─── */}
-        <div className="flex items-center justify-between border-t border-slate-800 px-6 py-3">
-          <p className="flex items-center gap-1.5 text-[10px] text-slate-600">
-            <Cpu className="h-3 w-3" /> Powered by Groq Cloud
-          </p>
-          <button
-            type="button"
-            onClick={handleClose}
-            className="text-[11px] font-medium text-slate-500 hover:text-slate-200 transition-colors"
-          >
-            Discard &amp; close
-          </button>
+        {/* Tab Body */}
+        <div className="p-5 max-h-[75vh] overflow-y-auto">
+          {activeTab === 'ai-text' && (
+            <AiTextTab onSave={onAdded} onClose={onClose} />
+          )}
+          {activeTab === 'ai-receipt' && (
+            <ReceiptTab onSave={onAdded} onClose={onClose} />
+          )}
+          {activeTab === 'manual' && (
+            <ManualTab onSave={onAdded} onClose={onClose} />
+          )}
         </div>
       </div>
     </div>

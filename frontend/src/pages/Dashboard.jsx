@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { Plus, RefreshCw, Wifi, WifiOff } from 'lucide-react';
 import { useDashboard } from '../hooks/useDashboard';
-import SummaryCards     from '../components/dashboard/SummaryCards';
+import SummaryCards from '../components/dashboard/SummaryCards';
 import SpendingBreakdown from '../components/dashboard/SpendingBreakdown';
-import TrendChart        from '../components/dashboard/TrendChart';
+import TrendChart from '../components/dashboard/TrendChart';
 import RecentTransactions from '../components/dashboard/RecentTransactions';
 import AddTransactionModal from '../components/dashboard/AddTransactionModal';
 
@@ -13,7 +13,6 @@ export default function Dashboard() {
     summary,
     isLoading,
     isBackendOnline,
-    addTransaction,
     deleteTransaction,
     refresh,
   } = useDashboard();
@@ -27,82 +26,77 @@ export default function Dashboard() {
     setRefreshing(false);
   };
 
-  const handleAdded = () => refresh();
-
   return (
     <div className="space-y-6">
-      {/* ── Page header ─────────────────────────────── */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      {/* Page Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-2">
         <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-extrabold tracking-tight text-white">
-              Financial Dashboard
+          <div className="flex items-center gap-2.5">
+            <h1 className="text-xl font-bold tracking-tight text-slate-100">
+              Financial Overview
             </h1>
-            {/* Backend status pill */}
-            <span className={`flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[10px] font-semibold ring-1 ${
-              isBackendOnline
-                ? 'bg-emerald-500/10 text-emerald-400 ring-emerald-500/25'
-                : 'bg-amber-500/10  text-amber-400  ring-amber-500/25'
-            }`}>
-              {isBackendOnline ? <Wifi className="h-2.5 w-2.5" /> : <WifiOff className="h-2.5 w-2.5" />}
-              {isBackendOnline ? 'API Connected' : 'Demo Mode'}
+            <span
+              className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-medium border ${
+                isBackendOnline
+                  ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                  : 'bg-amber-500/10 text-amber-400 border-amber-500/20'
+              }`}
+            >
+              {isBackendOnline ? <Wifi size={12} /> : <WifiOff size={12} />}
+              {isBackendOnline ? 'Online' : 'Local Demo'}
             </span>
           </div>
-          <p className="mt-0.5 text-sm text-slate-400">
-            {isBackendOnline
-              ? 'Live data from your FastAPI backend · /api/transactions'
-              : 'Backend offline — showing demo data'}
+          <p className="text-xs text-slate-400 mt-0.5">
+            Summary of income, expenses, and cash flow trends
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
-          {/* Refresh */}
+        {/* Action Buttons */}
+        <div className="flex items-center gap-2.5">
           <button
             onClick={handleRefresh}
             disabled={refreshing || isLoading}
-            title="Refresh data"
-            className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-800 bg-slate-900 text-slate-400 hover:text-white transition-colors disabled:opacity-40"
+            title="Refresh Ledger"
+            className="ui-btn-secondary p-2 h-9 w-9"
           >
-            <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+            <RefreshCw size={14} className={refreshing ? 'animate-spin' : ''} />
           </button>
 
-          {/* Add transaction */}
           <button
             onClick={() => setModalOpen(true)}
-            className="flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-emerald-500/20 hover:bg-emerald-500 active:scale-95 transition-all"
+            className="ui-btn-primary h-9"
           >
-            <Plus className="h-4 w-4" />
-            Add Transaction
+            <Plus size={15} />
+            <span>Add Transaction</span>
           </button>
         </div>
       </div>
 
-      {/* ── Summary cards ───────────────────────────── */}
+      {/* Metric Cards */}
       <SummaryCards summary={summary} isLoading={isLoading} />
 
-      {/* ── Charts row ──────────────────────────────── */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        {/* Trend chart — spans 2 cols */}
+      {/* Analytics & Charts */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
         <div className="lg:col-span-2">
           <TrendChart transactions={transactions} isLoading={isLoading} />
         </div>
-
-        {/* Donut + breakdown — 1 col */}
-        <SpendingBreakdown summary={summary} isLoading={isLoading} />
+        <div>
+          <SpendingBreakdown summary={summary} isLoading={isLoading} />
+        </div>
       </div>
 
-      {/* ── Transactions table ──────────────────────── */}
+      {/* Recent Ledger */}
       <RecentTransactions
         transactions={transactions}
         isLoading={isLoading}
         onDelete={deleteTransaction}
       />
 
-      {/* ── Modal ───────────────────────────────────── */}
+      {/* Add Transaction Modal */}
       <AddTransactionModal
         isOpen={modalOpen}
         onClose={() => setModalOpen(false)}
-        onAdded={handleAdded}
+        onAdded={refresh}
       />
     </div>
   );

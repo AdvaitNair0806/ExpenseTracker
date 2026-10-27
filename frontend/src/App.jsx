@@ -11,11 +11,11 @@ export default function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
 
   return (
-    <div className="min-h-screen flex bg-slate-950 text-slate-100 font-sans selection:bg-emerald-500 selection:text-white">
+    <div className="min-h-screen flex bg-[#090d16] text-slate-100 font-sans selection:bg-blue-600/30 selection:text-white">
       <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} />
 
       <div className="flex-1 flex flex-col min-w-0 overflow-y-auto">
-        <main className="flex-1 p-6 lg:p-8 max-w-7xl w-full mx-auto">
+        <main className="flex-1 p-6 md:p-8 max-w-7xl w-full mx-auto">
           {activeTab === 'dashboard'   && <Dashboard />}
           {activeTab === 'expenses'    && <Expenses />}
           {activeTab === 'ai-insights' && <AiInsights />}
@@ -24,7 +24,6 @@ export default function App() {
         </main>
       </div>
 
-      {/* Global floating AI chat — hidden on AI Insights page where the full panel is shown */}
       {activeTab !== 'ai-insights' && <ChatDrawer />}
     </div>
   );
