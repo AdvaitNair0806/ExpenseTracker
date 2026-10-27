@@ -1,5 +1,14 @@
 [
   {
+    "amount": 250.0,
+    "category": "Food & Dining",
+    "vendor": "Cafe Coffee Day",
+    "date": "2026-10-27",
+    "notes": "Spent 250 on lunch at Cafe Coffee Day",
+    "type": "expense",
+    "id": "tx_8f5908ad"
+  },
+  {
     "amount": 200.0,
     "category": "Transportation",
     "vendor": "Metro",
