@@ -3,7 +3,7 @@ import {
   X, Sparkles, Camera, Plus,
   Loader2, CheckCircle2, AlertCircle,
   ArrowLeft, SendHorizonal, Upload, ImageIcon,
-  Pencil, Cpu, Wand2
+  Pencil, Cpu, Wand2, Mic, MicOff
 } from 'lucide-react';
 import { transactionApi } from '../../services/api';
 
@@ -152,11 +152,95 @@ function AiLoadingOverlay({ label }) {
   );
 }
 
+// ─── Speech-to-Text Hook (Web Speech API) ─────────────────────────────
+function useSpeechRecognition({ onResult, onInterim, lang = 'en-IN' } = {}) {
+  const [listening, setListening] = useState(false);
+  const [supported, setSupported] = useState(true);
+  const [speechError, setSpeechError] = useState('');
+  const recRef = useRef(null);
+
+  useEffect(() => {
+    const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRec) {
+      setSupported(false);
+      return;
+    }
+
+    const recognition = new SpeechRec();
+    recognition.lang = lang;
+    recognition.interimResults = true;
+    recognition.continuous = false;
+    recognition.maxAlternatives = 1;
+
+    recognition.onresult = (event) => {
+      let interim = '';
+      let final = '';
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const transcript = event.results[i][0].transcript;
+        if (event.results[i].isFinal) {
+          final += transcript;
+        } else {
+          interim += transcript;
+        }
+      }
+      if (interim && onInterim) onInterim(interim);
+      if (final && onResult) onResult(final);
+    };
+
+    recognition.onerror = (event) => {
+      if (event.error === 'no-speech') {
+        setSpeechError('No speech detected. Please try again.');
+      } else if (event.error === 'not-allowed') {
+        setSpeechError('Microphone access denied. Please allow mic permissions.');
+      } else {
+        setSpeechError(`Speech error: ${event.error}`);
+      }
+      setListening(false);
+    };
+
+    recognition.onend = () => {
+      setListening(false);
+    };
+
+    recRef.current = recognition;
+
+    return () => {
+      try { recognition.abort(); } catch (_) {}
+    };
+  }, [lang]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const start = useCallback(() => {
+    if (!recRef.current) return;
+    setSpeechError('');
+    try {
+      recRef.current.start();
+      setListening(true);
+    } catch (_) {
+      // already started
+    }
+  }, []);
+
+  const stop = useCallback(() => {
+    if (!recRef.current) return;
+    try {
+      recRef.current.stop();
+    } catch (_) {}
+    setListening(false);
+  }, []);
+
+  const toggle = useCallback(() => {
+    listening ? stop() : start();
+  }, [listening, start, stop]);
+
+  return { listening, supported, speechError, toggle, start, stop };
+}
+
 // ─── TAB 1: AI Quick Add ──────────────────────────────────────────────
 function AiTextTab({ onSave, onClose }) {
   const [phase, setPhase] = useState('input');
   const [note, setNote] = useState('');
   const [error, setError] = useState('');
+  const [interimText, setInterimText] = useState('');
   const [fields, setFields] = useState({
     amount: '',
     category: 'Food & Dining',
@@ -165,6 +249,25 @@ function AiTextTab({ onSave, onClose }) {
     notes: '',
     type: 'expense',
   });
+
+  const { listening, supported: micSupported, speechError, toggle: toggleMic } =
+    useSpeechRecognition({
+      onResult: (transcript) => {
+        setNote((prev) => {
+          const sep = prev.trim() ? ' ' : '';
+          return prev.trim() + sep + transcript.trim();
+        });
+        setInterimText('');
+      },
+      onInterim: (interim) => {
+        setInterimText(interim);
+      },
+    });
+
+  // Surface speech errors into the main error banner
+  useEffect(() => {
+    if (speechError) setError(speechError);
+  }, [speechError]);
 
   const EXAMPLES = [
     'Spent 250 on lunch at Cafe Coffee Day',
@@ -202,9 +305,23 @@ function AiTextTab({ onSave, onClose }) {
 
   const handleSave = async () => {
     setPhase('saving');
+    if (fields._id && transactionApi.update) {
+      try {
+        await transactionApi.update(fields._id, {
+          amount: parseFloat(fields.amount) || undefined,
+          vendor: fields.vendor || undefined,
+          category: fields.category || undefined,
+          date: fields.date || undefined,
+          notes: fields.notes || undefined,
+          type: fields.type || undefined,
+        });
+      } catch (e) {
+        console.warn('Could not sync updated fields:', e);
+      }
+    }
     await new Promise((r) => setTimeout(r, 200));
-    onSave();
-    onClose();
+    if (onSave) onSave();
+    if (onClose) onClose();
   };
 
   if (phase === 'loading') return <AiLoadingOverlay label="Parsing transaction" />;
@@ -214,25 +331,82 @@ function AiTextTab({ onSave, onClose }) {
       {phase === 'input' && (
         <>
           <div>
-            <label className="block text-xs font-medium text-slate-400 mb-1.5">
-              Natural Language Prompt
-            </label>
-            <textarea
-              rows={3}
-              value={note}
-              onChange={(e) => {
-                setNote(e.target.value);
-                setError('');
-              }}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) handleParse();
-              }}
-              placeholder="e.g. Paid 450 for cinema ticket via UPI yesterday"
-              className="ui-input resize-none text-xs"
-            />
-            <p className="mt-1 text-[11px] text-slate-500">
-              Press <kbd className="px-1 rounded bg-[#1e293b] text-slate-300">Ctrl</kbd>+<kbd className="px-1 rounded bg-[#1e293b] text-slate-300">Enter</kbd> to parse
-            </p>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="text-xs font-medium text-slate-400">
+                Natural Language Prompt
+              </label>
+              {micSupported && (
+                <span className="text-[10px] text-slate-500">
+                  {listening ? 'Listening…' : 'or use voice'}
+                </span>
+              )}
+            </div>
+
+            {/* Textarea + Mic Button Row */}
+            <div className="relative">
+              <textarea
+                rows={3}
+                value={note}
+                onChange={(e) => {
+                  setNote(e.target.value);
+                  setError('');
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) handleParse();
+                }}
+                placeholder={listening ? 'Speak now — say your expense…' : 'e.g. Paid 450 for cinema ticket via UPI yesterday'}
+                className={`ui-input resize-none text-xs pr-12 ${
+                  listening ? 'border-blue-500/60 ring-1 ring-blue-500/30' : ''
+                }`}
+              />
+
+              {/* Microphone Toggle Button */}
+              {micSupported && (
+                <button
+                  type="button"
+                  onClick={toggleMic}
+                  title={listening ? 'Stop recording' : 'Start voice input'}
+                  className={`absolute right-2 top-2 p-1.5 rounded-lg transition-all ${
+                    listening
+                      ? 'bg-rose-500/20 text-rose-400 border border-rose-500/40 animate-pulse'
+                      : 'bg-[#060911] text-slate-400 border border-[#1e293b] hover:text-blue-400 hover:border-blue-500/40'
+                  }`}
+                >
+                  {listening ? <MicOff size={14} /> : <Mic size={14} />}
+                </button>
+              )}
+            </div>
+
+            {/* Live Interim Transcript Preview */}
+            {listening && interimText && (
+              <div className="mt-1.5 flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-blue-500/10 border border-blue-500/20">
+                <span className="relative flex h-2 w-2 shrink-0">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75" />
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500" />
+                </span>
+                <span className="text-[11px] text-blue-300 italic truncate">
+                  {interimText}
+                </span>
+              </div>
+            )}
+
+            {/* Recording Active Banner */}
+            {listening && !interimText && (
+              <div className="mt-1.5 flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-blue-500/10 border border-blue-500/20">
+                <span className="relative flex h-2 w-2 shrink-0">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75" />
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500" />
+                </span>
+                <span className="text-[11px] text-blue-300">Listening… speak your transaction</span>
+              </div>
+            )}
+
+            {!listening && (
+              <p className="mt-1 text-[11px] text-slate-500">
+                Press <kbd className="px-1 rounded bg-[#1e293b] text-slate-300">Ctrl</kbd>+<kbd className="px-1 rounded bg-[#1e293b] text-slate-300">Enter</kbd> to parse
+                {micSupported && <> · Click <Mic size={10} className="inline mx-0.5 -mt-0.5" /> to dictate</> }
+              </p>
+            )}
           </div>
 
           <div>
@@ -256,7 +430,7 @@ function AiTextTab({ onSave, onClose }) {
           <button
             type="button"
             onClick={handleParse}
-            disabled={!note.trim()}
+            disabled={!note.trim() || listening}
             className="ui-btn-primary w-full h-9"
           >
             <Wand2 size={14} />
@@ -365,9 +539,23 @@ function ReceiptTab({ onSave, onClose }) {
     }
   };
 
-  const handleSave = () => {
-    onSave();
-    onClose();
+  const handleSave = async () => {
+    if (fields._id && transactionApi.update) {
+      try {
+        await transactionApi.update(fields._id, {
+          amount: parseFloat(fields.amount) || undefined,
+          vendor: fields.vendor || undefined,
+          category: fields.category || undefined,
+          date: fields.date || undefined,
+          notes: fields.notes || undefined,
+          type: fields.type || undefined,
+        });
+      } catch (e) {
+        console.warn('Could not sync updated fields:', e);
+      }
+    }
+    if (onSave) onSave();
+    if (onClose) onClose();
   };
 
   if (phase === 'loading') return <AiLoadingOverlay label="Analyzing receipt document" />;
@@ -495,7 +683,8 @@ function ManualTab({ onSave, onClose }) {
     setBusy(true);
 
     try {
-      await transactionApi.createTransaction({
+      const addFn = transactionApi.createTransaction || transactionApi.addManual;
+      await addFn({
         type,
         amount: parseFloat(amount),
         vendor: vendor.trim(),
@@ -503,8 +692,8 @@ function ManualTab({ onSave, onClose }) {
         date: date || new Date().toISOString().slice(0, 10),
         notes: notes.trim(),
       });
-      onSave();
-      onClose();
+      if (onSave) onSave();
+      if (onClose) onClose();
     } catch (err) {
       setError(err.message || 'Failed to save transaction.');
     } finally {

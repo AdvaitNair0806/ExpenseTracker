@@ -1,5 +1,14 @@
 [
   {
+    "amount": 500.0,
+    "category": "Entertainment",
+    "vendor": "Movie Theater",
+    "date": "2026-10-28",
+    "notes": "Rs 500 movie",
+    "type": "expense",
+    "id": "tx_80f9eb64"
+  },
+  {
     "amount": 250.0,
     "category": "Food & Dining",
     "vendor": "Cafe Coffee Day",

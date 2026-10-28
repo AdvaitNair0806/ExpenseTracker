@@ -34,6 +34,18 @@ export const transactionApi = {
       body: JSON.stringify(payload),
     }),
 
+  createTransaction: (payload) =>
+    apiRequest('/api/transactions/manual', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+
+  update: (id, payload) =>
+    apiRequest(`/api/transactions/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    }),
+
   addFromText: (note) =>
     apiRequest('/api/transactions/ai-text', {
       method: 'POST',
@@ -47,7 +59,9 @@ export const transactionApi = {
   },
 
   delete: (id) =>
-    apiRequest(`/api/v1/transactions/${id}`, { method: 'DELETE' }),
+    apiRequest(`/api/transactions/${id}`, { method: 'DELETE' }).catch(() =>
+      apiRequest(`/api/v1/transactions/${id}`, { method: 'DELETE' })
+    ),
 
   getSummary: () => apiRequest('/api/summary'),
 };

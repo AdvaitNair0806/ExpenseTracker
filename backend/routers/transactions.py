@@ -270,7 +270,61 @@ async def create_ai_receipt_transaction(
 
 
 # ==============================================================================
-# 5. GET /api/summary
+# 5. GET /api/transactions/{transaction_id}
+# ==============================================================================
+@router.get(
+    "/transactions/{transaction_id}",
+    response_model=Transaction,
+    summary="Get a transaction by ID"
+)
+async def get_single_transaction(transaction_id: str):
+    tx = get_transaction_by_id(transaction_id)
+    if not tx:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Transaction with ID '{transaction_id}' not found"
+        )
+    return tx
+
+
+# ==============================================================================
+# 6. PUT /api/transactions/{transaction_id}
+# ==============================================================================
+@router.put(
+    "/transactions/{transaction_id}",
+    response_model=Transaction,
+    summary="Update an existing transaction"
+)
+async def update_existing_transaction(transaction_id: str, payload: TransactionUpdate):
+    updated = update_transaction(transaction_id, payload)
+    if not updated:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Transaction with ID '{transaction_id}' not found"
+        )
+    return updated
+
+
+# ==============================================================================
+# 7. DELETE /api/transactions/{transaction_id}
+# ==============================================================================
+@router.delete(
+    "/transactions/{transaction_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Delete a transaction"
+)
+async def delete_existing_transaction(transaction_id: str):
+    deleted = delete_transaction(transaction_id)
+    if not deleted:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Transaction with ID '{transaction_id}' not found"
+        )
+    return None
+
+
+# ==============================================================================
+# 8. GET /api/summary
 # ==============================================================================
 @router.get(
     "/summary",
